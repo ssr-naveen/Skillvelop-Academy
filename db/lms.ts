@@ -197,12 +197,16 @@ async function seedLearningContent() {
   const db = database(); const now = new Date().toISOString();
   const math = await db.prepare("SELECT id FROM courses WHERE id='crs_math_mastery'").first();
   if (!math) return;
-  await db.batch([
+  const english = await db.prepare("SELECT id FROM courses WHERE id='crs_english_confidence'").first();
+  const statements = [
     db.prepare("INSERT OR IGNORE INTO lessons (id,course_id,tutor_id,title,summary,content,position,duration_minutes,status,created_at) VALUES ('les_demo_equations','crs_math_mastery','usr_demo_tutor','Understanding linear equations','Learn how variables, constants and equality work together.','A linear equation balances two expressions. Start by identifying the variable, then use inverse operations to isolate it while keeping both sides equal. Work through the examples and write each transformation on a new line.',1,25,'published',?)").bind(now),
     db.prepare("INSERT OR IGNORE INTO lessons (id,course_id,tutor_id,title,summary,content,position,duration_minutes,status,created_at) VALUES ('les_demo_solving','crs_math_mastery','usr_demo_tutor','Solving equations step by step','Use inverse operations confidently and check your answers.','Simplify both sides first, collect like terms, move variable terms to one side and constants to the other. Divide by the coefficient, then substitute your answer back into the original equation to verify it.',2,35,'published',?)").bind(now),
-    db.prepare("INSERT OR IGNORE INTO lessons (id,course_id,tutor_id,title,summary,content,position,duration_minutes,status,created_at) VALUES ('les_demo_conversation','crs_english_confidence','usr_demo_tutor','Confident introductions','Structure a clear introduction for real conversations.','Open with your name and context, add one meaningful detail, and close with a question that invites the other person to speak. Practise aloud twice and focus on pace rather than speed.',1,20,'published',?)").bind(now),
     db.prepare("INSERT OR IGNORE INTO messages (id,course_id,sender_id,recipient_id,body,created_at) VALUES ('msg_demo_welcome','crs_math_mastery','usr_demo_tutor','usr_demo_student','Welcome, Arjun. Message me here whenever you need help before our next class.',?)").bind(now),
-  ]);
+  ];
+  if (english) {
+    statements.push(db.prepare("INSERT OR IGNORE INTO lessons (id,course_id,tutor_id,title,summary,content,position,duration_minutes,status,created_at) VALUES ('les_demo_conversation','crs_english_confidence','usr_demo_tutor','Confident introductions','Structure a clear introduction for real conversations.','Open with your name and context, add one meaningful detail, and close with a question that invites the other person to speak. Practise aloud twice and focus on pace rather than speed.',1,20,'published',?)").bind(now));
+  }
+  await db.batch(statements);
 }
 
 async function seedDemoData() {
@@ -256,3 +260,4 @@ export async function canManage(profile: UserProfile, permission: ManagerPermiss
   if (profile.role !== "manager") return false;
   return Boolean(await first("SELECT 1 ok FROM manager_permissions WHERE manager_id=? AND permission=?", profile.id, permission));
 }
+
