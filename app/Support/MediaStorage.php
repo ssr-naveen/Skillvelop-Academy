@@ -82,14 +82,15 @@ class MediaStorage
         if (static::driver() === 'database') {
             $row = DB::table('media_files')->where('path', $path)->first();
 
-            if ($row === null) {
-                return null;
+            if ($row !== null) {
+                return [
+                    'contents' => static::decode($row->contents),
+                    'mime_type' => $row->mime_type ?: 'application/octet-stream',
+                ];
             }
 
-            return [
-                'contents' => static::decode($row->contents),
-                'mime_type' => $row->mime_type ?: 'application/octet-stream',
-            ];
+            // Fall through to the disk: uploads that predate this driver are
+            // still shipped inside public/uploads.
         }
 
         $local = public_path('uploads/'.$path);
