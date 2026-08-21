@@ -9,6 +9,21 @@ const numericFields = new Set([
   "activities_total", "activities_done", "average_score", "rating_count",
 ]);
 
+const applicationTables = [
+  "users", "courses", "chapters", "enrollments", "live_classes", "activities",
+  "submissions", "announcements", "manager_permissions", "student_subscriptions",
+  "subscription_renewals", "lessons", "lesson_progress", "messages", "user_profiles",
+  "curriculum_templates", "curriculum_template_lessons", "curriculum_imports",
+  "student_gamification", "badges", "student_badges", "certificates", "lesson_resources",
+  "lesson_notes", "submission_attachments", "quizzes", "quiz_questions", "quiz_attempts",
+  "ai_settings", "ai_threads", "ai_messages", "ai_provider_credentials", "file_objects",
+];
+
+const applicationTablePattern = new RegExp(
+  `\\b(FROM|JOIN|UPDATE|INTO|DELETE\\s+FROM)\\s+(${applicationTables.join("|")})\\b`,
+  "gi",
+);
+
 function normaliseRow<T>(row: T): T {
   const record = row as QueryRow;
   for (const [key, value] of Object.entries(record)) {
@@ -27,7 +42,8 @@ function translateSql(input: string): string {
   let query = trimmed
     .replace(/INSERT\s+OR\s+IGNORE\s+INTO/gi, "INSERT INTO")
     .replace(/GROUP_CONCAT\(([^,]+),\s*'([^']*)'\)/gi, "STRING_AGG($1, '$2')")
-    .replace(/\bMAX\(level\s*,/gi, "GREATEST(level,");
+    .replace(/\bMAX\(level\s*,/gi, "GREATEST(level,")
+    .replace(applicationTablePattern, (_match, keyword: string, table: string) => `${keyword} public.${table}`);
 
   if (/^INSERT\s+/i.test(query) && /INSERT\s+OR\s+IGNORE\s+INTO/i.test(trimmed) && !/\bON\s+CONFLICT\b/i.test(query)) {
     query += " ON CONFLICT DO NOTHING";
@@ -95,20 +111,20 @@ class PostgresDatabase {
 
 class DatabaseFileStore {
   async put(key: string, value: ArrayBuffer, metadata: FileMetadata = {}) {
-    await sqlClient()`INSERT INTO file_objects (key,data,content_type,created_at)
+    await sqlClient()`INSERT INTO public.file_objects (key,data,content_type,created_at)
       VALUES (${key},${Buffer.from(value)},${metadata.httpMetadata?.contentType || "application/octet-stream"},${new Date().toISOString()})
       ON CONFLICT(key) DO UPDATE SET data=excluded.data,content_type=excluded.content_type,created_at=excluded.created_at`;
   }
   async get(key: string) {
-    const rows = await sqlClient()`SELECT data,content_type FROM file_objects WHERE key=${key} LIMIT 1`;
+    const rows = await sqlClient()`SELECT data,content_type FROM public.file_objects WHERE key=${key} LIMIT 1`;
     if (!rows[0]) return null;
     const data = rows[0].data as Uint8Array;
     return { body: new Uint8Array(data), httpMetadata: { contentType: String(rows[0].content_type) } };
   }
-  async delete(key: string) { await sqlClient()`DELETE FROM file_objects WHERE key=${key}`; }
+  async delete(key: string) { await sqlClient()`DELETE FROM public.file_objects WHERE key=${key}`; }
   async list(options: { prefix?: string } = {}) {
     const prefix = `${options.prefix || ""}%`;
-    const rows = await sqlClient()`SELECT key FROM file_objects WHERE key LIKE ${prefix}`;
+    const rows = await sqlClient()`SELECT key FROM public.file_objects WHERE key LIKE ${prefix}`;
     return { objects: rows.map((row) => ({ key: String(row.key) })) };
   }
 }
@@ -122,3 +138,4 @@ export const env = {
 };
 
 export type D1DatabaseCompat = PostgresDatabase;
+
