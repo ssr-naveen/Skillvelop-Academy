@@ -40,9 +40,12 @@ Route::post('doUsrlgn', [App\Http\Controllers\Auth\LoginController::class, 'logi
 Route::post('doAdmlgn', [App\Http\Controllers\Auth\Admin\LoginController::class, 'login'])->name('admin.dologin');
 
 // The application ships its own forgot/reset password flow above, and the
-// stock controllers here do not implement Laravel's default handlers, so only
-// the login and register routes are registered.
-Auth::routes(['reset' => false, 'confirm' => false, 'verify' => false]);
+// stock controllers here do not implement Laravel's default handlers.
+//
+// Registration is off: accounts are created from the admin panel. The stock
+// register form did not set user_type, so it fell to the column default and
+// handed every person who signed up a super administrator account.
+Auth::routes(['register' => false, 'reset' => false, 'confirm' => false, 'verify' => false]);
 Route::get('admin/login', [App\Http\Controllers\Auth\Admin\LoginController::class, 'login_view'])->name('admin.login');
 // Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 Route::get('/admin/dashboard', [App\Http\Controllers\Admin\HomeController::class, 'index'])->middleware('Admin')->name('admin.dashboard');

@@ -9,19 +9,19 @@
   <!-- plugins:css -->
   <link rel="stylesheet" href="{{asset('assets/css/style.css')}}">
 
-  <link rel="stylesheet" href="{{asset('Admin/vendors/feather/feather.css')}}">
-  <link rel="stylesheet" href="{{asset('Admin/vendors/ti-icons/css/themify-icons.css')}}">
-  <link rel="stylesheet" href="{{asset('Admin/vendors/css/vendor.bundle.base.css')}}">
+  <link rel="stylesheet" href="{{asset('admin-assets/vendors/feather/feather.css')}}">
+  <link rel="stylesheet" href="{{asset('admin-assets/vendors/ti-icons/css/themify-icons.css')}}">
+  <link rel="stylesheet" href="{{asset('admin-assets/vendors/css/vendor.bundle.base.css')}}">
   <!-- endinject -->
   <!-- Plugin css for this page -->
-  <link rel="stylesheet" href="{{asset('Admin/vendors/datatables.net-bs4/dataTables.bootstrap4.css')}}">
-  <link rel="stylesheet" href="{{asset('Admin/vendors/ti-icons/css/themify-icons.css')}}">
-  <link rel="stylesheet" type="text/css" href="{{asset('Admin/js/select.dataTables.min.css')}}">
+  <link rel="stylesheet" href="{{asset('admin-assets/vendors/datatables.net-bs4/dataTables.bootstrap4.css')}}">
+  <link rel="stylesheet" href="{{asset('admin-assets/vendors/ti-icons/css/themify-icons.css')}}">
+  <link rel="stylesheet" type="text/css" href="{{asset('admin-assets/js/select.dataTables.min.css')}}">
   <!-- End plugin css for this page -->
   <!-- inject:css -->
-  <link rel="stylesheet" href="{{asset('Admin/css/vertical-layout-light/style.css')}}">
+  <link rel="stylesheet" href="{{asset('admin-assets/css/vertical-layout-light/style.css')}}">
   <!-- endinject -->
-  <link rel="shortcut icon" href="{{asset('Admin/images/favicon.png')}}" />
+  <link rel="shortcut icon" href="{{asset('admin-assets/images/favicon.png')}}" />
   <link href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/1.1.3/sweetalert.css" rel="stylesheet"/>
   {{-- <link href=" https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote.min.css " rel="stylesheet"> --}}
   <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
@@ -45,25 +45,25 @@
 </div>
 <!-- page-body-wrapper ends -->
 </div>
-<script src="{{asset('Admin/vendors/js/vendor.bundle.base.js')}}"></script>
+<script src="{{asset('admin-assets/vendors/js/vendor.bundle.base.js')}}"></script>
   <!-- endinject -->
   <!-- Plugin js for this page -->
-  <script src="{{asset('Admin/vendors/chart.js/Chart.min.js')}}"></script>
-  <script src="{{asset('Admin/vendors/datatables.net/jquery.dataTables.js')}}"></script>
-  <script src="{{asset('Admin/vendors/datatables.net-bs4/dataTables.bootstrap4.js')}}"></script>
-  <script src="{{asset('Admin/js/dataTables.select.min.js')}}"></script>
+  <script src="{{asset('admin-assets/vendors/chart.js/Chart.min.js')}}"></script>
+  <script src="{{asset('admin-assets/vendors/datatables.net/jquery.dataTables.js')}}"></script>
+  <script src="{{asset('admin-assets/vendors/datatables.net-bs4/dataTables.bootstrap4.js')}}"></script>
+  <script src="{{asset('admin-assets/js/dataTables.select.min.js')}}"></script>
 
   <!-- End plugin js for this page -->
   <!-- inject:js -->
-  <script src="{{asset('Admin/js/off-canvas.js')}}"></script>
-  <script src="{{asset('Admin/js/hoverable-collapse.js')}}"></script>
-  <script src="{{asset('Admin/js/template.js')}}"></script>
-  <script src="{{asset('Admin/js/settings.js')}}"></script>
-  <script src="{{asset('Admin/js/todolist.js')}}"></script>
+  <script src="{{asset('admin-assets/js/off-canvas.js')}}"></script>
+  <script src="{{asset('admin-assets/js/hoverable-collapse.js')}}"></script>
+  <script src="{{asset('admin-assets/js/template.js')}}"></script>
+  <script src="{{asset('admin-assets/js/settings.js')}}"></script>
+  <script src="{{asset('admin-assets/js/todolist.js')}}"></script>
   <!-- endinject -->
   <!-- Custom js for this page-->
-  <script src="{{asset('Admin/js/dashboard.js')}}"></script>
-  <script src="{{asset('Admin/js/Chart.roundedBarCharts.js')}}"></script>
+  <script src="{{asset('admin-assets/js/dashboard.js')}}"></script>
+  <script src="{{asset('admin-assets/js/Chart.roundedBarCharts.js')}}"></script>
   <!-- End custom js for this page-->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
   <script>
