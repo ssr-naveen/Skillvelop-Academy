@@ -33,12 +33,14 @@ export async function loadLearningSequence(courseId: string, studentId: string) 
     ...quizResult.results.map(row => ({ id:row.id,type:"quiz" as const,courseId:row.course_id,chapterId:row.chapter_id,chapterTitle:row.chapter_title??"Course checks",chapterPosition:row.chapter_position??0,title:row.title,summary:row.description,label:row.kind==="quiz"?"Practice quiz":row.kind==="assessment"?"Assessment":"Final assessment",position:row.kind==="quiz"?100:row.kind==="assessment"?400:500,tutorUnlocked:Boolean(row.is_unlocked&&(!row.chapter_id||row.chapter_unlocked)),completed:row.attempts>0,available:false })),
     ...activityResult.results.map(row => ({ id:row.id,type:"activity" as const,courseId:row.course_id,chapterId:row.chapter_id,chapterTitle:row.chapter_title??"Course work",chapterPosition:row.chapter_position??0,title:row.title,summary:row.instructions,label:row.type.replaceAll("_"," "),position:row.type==="assessment"?300:200,tutorUnlocked:Boolean(row.is_unlocked&&(!row.chapter_id||row.chapter_unlocked)),completed:Boolean(row.submission_id),available:false })),
   ].sort((a,b) => a.chapterPosition-b.chapterPosition || a.position-b.position || a.title.localeCompare(b.title));
-  let prerequisitesComplete = true;
-  return items.map(item => {
-    const available = item.tutorUnlocked && (item.completed || prerequisitesComplete);
-    if (!item.completed) prerequisitesComplete = false;
-    return { ...item, available };
-  });
+
+  return items.map(item => ({
+    ...item,
+    // Tutor/course/chapter unlock state is the authoritative availability gate.
+    // This keeps the learner UI and submission API consistent so an item a
+    // student can open cannot later fail with a stale prerequisite error.
+    available: item.tutorUnlocked,
+  }));
 }
 
 export function learningItemHref(item: Pick<LearningItem,"courseId"|"type"|"id">) {
