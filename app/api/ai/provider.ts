@@ -17,11 +17,25 @@ export async function getViyuSettings(){return await database().prepare("SELECT 
 export async function hasStoredCredential(provider:ViyuProvider){if(provider==="openai"&&env.OPENAI_API_KEY)return true;if(provider==="anthropic"&&env.ANTHROPIC_API_KEY)return true;return Boolean(await database().prepare("SELECT provider FROM ai_provider_credentials WHERE provider=?").bind(provider).first());}
 async function providerKey(provider:ViyuProvider){const direct=provider==="openai"?env.OPENAI_API_KEY:env.ANTHROPIC_API_KEY;if(direct)return direct;const row=await database().prepare("SELECT encrypted_key,iv FROM ai_provider_credentials WHERE provider=?").bind(provider).first<Credential>();if(!row)throw new Error("VIYU has not been connected by the super admin yet.");return decryptProviderKey(row);}
 
+function normaliseAnthropicModel(model:string){
+  const value=model.trim().toLowerCase();
+  const aliases:Record<string,string>={
+    "haiku-4.5":"claude-haiku-4-5",
+    "haiku-4-5":"claude-haiku-4-5",
+    "claude-haiku-4.5":"claude-haiku-4-5",
+    "sonnet-4.5":"claude-sonnet-4-5",
+    "sonnet-4-5":"claude-sonnet-4-5",
+    "claude-sonnet-4.5":"claude-sonnet-4-5",
+  };
+  return aliases[value]??model.trim();
+}
+
 export async function callViyu(settings:ViyuSettings,system:string,messages:ProviderMessage[],maxTokens=1800){
   const key=await providerKey(settings.provider);
   if(settings.provider==="anthropic"){
-    const response=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"x-api-key":key,"anthropic-version":"2023-06-01","Content-Type":"application/json"},body:JSON.stringify({model:settings.model,max_tokens:maxTokens,system,messages:messages.map(item=>({role:item.role,content:item.body}))})});
-    if(!response.ok)throw new Error("VIYU could not connect. Ask the super admin to check the AI credential and model.");
+    const model=normaliseAnthropicModel(settings.model||"claude-haiku-4-5");
+    const response=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"x-api-key":key,"anthropic-version":"2023-06-01","Content-Type":"application/json"},body:JSON.stringify({model,max_tokens:maxTokens,system,messages:messages.map(item=>({role:item.role,content:item.body}))})});
+    if(!response.ok){const detail=await response.text().catch(()=>"");console.error("VIYU Anthropic request failed",response.status,detail.slice(0,600));throw new Error("VIYU could not connect. Ask the super admin to check the AI credential and model.");}
     const payload=await response.json() as {content?:{type:string;text?:string}[]};return payload.content?.filter(item=>item.type==="text").map(item=>item.text??"").join("\n")??"";
   }
   const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},body:JSON.stringify({model:settings.model,input:[{role:"system",content:system},...messages.map(item=>({role:item.role,content:item.body}))],max_output_tokens:maxTokens})});
