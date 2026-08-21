@@ -24,6 +24,32 @@ const applicationTablePattern = new RegExp(
   "gi",
 );
 
+function normalisePostgresGrouping(input: string): string {
+  let query = input;
+  if (/u\.name\s+(?:AS\s+)?tutor/i.test(query)) {
+    query = query.replace(/GROUP BY c\.id\b/i, "GROUP BY c.id,u.name");
+  }
+  if (/FROM activities a/i.test(query) && /c\.title\s+(?:AS\s+)?course/i.test(query)) {
+    query = query.replace(/GROUP BY a\.id\b/i, "GROUP BY a.id,c.title");
+  }
+  if (/CASE WHEN ci\.id IS NULL/i.test(query)) {
+    query = query.replace(/GROUP BY c\.id\b/i, "GROUP BY c.id,ci.id");
+  }
+  if (/e\.progress,COUNT/i.test(query)) {
+    query = query.replace(/GROUP BY c\.id\b/i, "GROUP BY c.id,e.progress");
+  }
+  if (/ss\.plan_type/i.test(query)) {
+    query = query.replace(
+      /GROUP BY u\.id\b/i,
+      "GROUP BY u.id,ss.plan_type,ss.class_allowance,ss.expires_at,ss.started_at",
+    );
+  }
+  if (/FROM quizzes q/i.test(query) && /c\.title\s+course/i.test(query) && /ch\.title\s+chapter/i.test(query)) {
+    query = query.replace(/GROUP BY q\.id\b/i, "GROUP BY q.id,c.title,ch.title,ch.position");
+  }
+  return query;
+}
+
 function normaliseRow<T>(row: T): T {
   const record = row as QueryRow;
   for (const [key, value] of Object.entries(record)) {
@@ -44,6 +70,8 @@ function translateSql(input: string): string {
     .replace(/GROUP_CONCAT\(([^,]+),\s*'([^']*)'\)/gi, "STRING_AGG($1, '$2')")
     .replace(/\bMAX\(level\s*,/gi, "GREATEST(level,")
     .replace(applicationTablePattern, (_match, keyword: string, table: string) => `${keyword} public.${table}`);
+
+  query = normalisePostgresGrouping(query);
 
   if (/^INSERT\s+/i.test(query) && /INSERT\s+OR\s+IGNORE\s+INTO/i.test(trimmed) && !/\bON\s+CONFLICT\b/i.test(query)) {
     query += " ON CONFLICT DO NOTHING";
