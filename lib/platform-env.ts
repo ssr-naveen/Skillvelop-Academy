@@ -47,6 +47,12 @@ function normalisePostgresGrouping(input: string): string {
   if (/FROM (?:public\.)?quizzes q/i.test(query) && /c\.title\s+course/i.test(query) && /ch\.title\s+chapter/i.test(query)) {
     query = query.replace(/GROUP BY q\.id\b/i, "GROUP BY q.id,c.title,ch.title,ch.position");
   }
+  if (/FROM (?:public\.)?quizzes q/i.test(query) && /ch\.title\s+chapter_title/i.test(query)) {
+    query = query.replace(
+      /GROUP BY q\.id\b/i,
+      "GROUP BY q.id,ch.title,ch.position,ch.is_unlocked",
+    );
+  }
   return query;
 }
 
