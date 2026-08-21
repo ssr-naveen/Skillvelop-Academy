@@ -1,0 +1,8 @@
+# Not needed at runtime — keeps the deployment (and the function bundle) small.
+.git
+.github
+tests
+node_modules
+storage/logs/*.log
+public/assets.zip
+daily_fresh1.sql

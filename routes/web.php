@@ -39,10 +39,13 @@ Route::post('reset-password', [App\Http\Controllers\Auth\ForgotPasswordControlle
 Route::post('doUsrlgn', [App\Http\Controllers\Auth\LoginController::class, 'login'])->name('user.dologin');
 Route::post('doAdmlgn', [App\Http\Controllers\Auth\Admin\LoginController::class, 'login'])->name('admin.dologin');
 
-Auth::routes();
+// The application ships its own forgot/reset password flow above, and the
+// stock controllers here do not implement Laravel's default handlers, so only
+// the login and register routes are registered.
+Auth::routes(['reset' => false, 'confirm' => false, 'verify' => false]);
 Route::get('admin/login', [App\Http\Controllers\Auth\Admin\LoginController::class, 'login_view'])->name('admin.login');
 // Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
-Route::get('/admin/dashboard', [App\Http\Controllers\Admin\HomeController::class, 'index'])->name('admin.dashboard');
+Route::get('/admin/dashboard', [App\Http\Controllers\Admin\HomeController::class, 'index'])->middleware('Admin')->name('admin.dashboard');
 
 //route admin
 Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['Admin']], function () {
@@ -114,4 +117,14 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['Admin']],
 
 });
 
+Route::post('admin/check-email', [App\Http\Controllers\Admin\AjaxController::class, 'checkEmail'])
+    ->middleware('Admin')
+    ->name('check-email');
+
 // Route::get('{slug}', [App\Http\Controllers\CommonController::class, 'fetch']);
+
+// Serves admin uploads that live in Supabase Storage. Files still present in
+// public/uploads are handled by the web server before this route is reached.
+Route::get('uploads/{path}', [App\Http\Controllers\UploadController::class, 'show'])
+    ->where('path', '.*')
+    ->name('uploads.show');

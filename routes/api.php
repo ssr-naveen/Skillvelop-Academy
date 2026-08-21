@@ -18,4 +18,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::post('webhook/attendance', [App\Http\Controllers\WebHookController::class, 'attendance']);
+// The attendance webhook pointed at App\Http\Controllers\WebHookController,
+// which is not part of this codebase. Restore the controller before
+// re-enabling the route.

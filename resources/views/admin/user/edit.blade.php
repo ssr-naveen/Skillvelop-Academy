@@ -146,6 +146,7 @@
                         method: 'POST',
                         data: {
                             _token: "{{ csrf_token() }}",
+                            id: "{{ request()->route('id') }}",
                             email: email
                         },
                         success: function(response) {

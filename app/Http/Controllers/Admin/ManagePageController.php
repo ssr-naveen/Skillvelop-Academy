@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\MediaStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -129,18 +130,14 @@ class ManagePageController extends Controller
                 $random_no = substr($no, 0, 2);
                 $final_image_name = $date . $random_no . '.' . $image->getClientOriginalExtension();
 
-                $destination_path = public_path('/uploads/managepage/');
-                if (!File::exists($destination_path)) {
-                    File::makeDirectory($destination_path, $mode = 0777, true, true);
-                }
-                $image->move($destination_path, $final_image_name);
+                MediaStorage::put('managepage', $image, $final_image_name);
             }
 
             $slug = ltrim(rtrim(strtolower(str_replace(array(' ','/','%','°F','---','--'),'-',str_replace(array('&','?',"'",'"'),'',str_replace('(','',str_replace(')','', str_replace(',','',str_replace('®','',trim($request->name)))))))),'-'),'-');
 
             // check to see if any other slugs exist that are the same & count them
 
-            $slug_count = DB::table('manage_pages')->whereRaw("slug RLIKE '^{$slug}(-[0-9]+)?$'")->count();
+            $slug_count = DB::table('manage_pages')->whereRaw('slug ~ ?', ['^'.preg_quote($slug).'(-[0-9]+)?$'])->count();
 
             $slug = $slug_count ? "{$slug}-{$slug_count}" : $slug;
 
@@ -211,11 +208,7 @@ class ManagePageController extends Controller
                 $random_no = substr($no, 0, 2);
                 $final_image_name = $date . $random_no . '.' . $image->getClientOriginalExtension();
 
-                $destination_path = public_path('/uploads/managepage/');
-                if (!File::exists($destination_path)) {
-                    File::makeDirectory($destination_path, $mode = 0777, true, true);
-                }
-                $image->move($destination_path, $final_image_name);
+                MediaStorage::put('managepage', $image, $final_image_name);
             } else {
                 $final_image_name = $manage_pages->image;
             }
