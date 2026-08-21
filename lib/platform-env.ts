@@ -29,7 +29,7 @@ function normalisePostgresGrouping(input: string): string {
   if (/u\.name\s+(?:AS\s+)?tutor/i.test(query)) {
     query = query.replace(/GROUP BY c\.id\b/i, "GROUP BY c.id,u.name");
   }
-  if (/FROM activities a/i.test(query) && /c\.title\s+(?:AS\s+)?course/i.test(query)) {
+  if (/FROM (?:public\.)?activities a/i.test(query) && /c\.title\s+(?:AS\s+)?course/i.test(query)) {
     query = query.replace(/GROUP BY a\.id\b/i, "GROUP BY a.id,c.title");
   }
   if (/CASE WHEN ci\.id IS NULL/i.test(query)) {
@@ -44,7 +44,7 @@ function normalisePostgresGrouping(input: string): string {
       "GROUP BY u.id,ss.plan_type,ss.class_allowance,ss.expires_at,ss.started_at",
     );
   }
-  if (/FROM quizzes q/i.test(query) && /c\.title\s+course/i.test(query) && /ch\.title\s+chapter/i.test(query)) {
+  if (/FROM (?:public\.)?quizzes q/i.test(query) && /c\.title\s+course/i.test(query) && /ch\.title\s+chapter/i.test(query)) {
     query = query.replace(/GROUP BY q\.id\b/i, "GROUP BY q.id,c.title,ch.title,ch.position");
   }
   return query;
