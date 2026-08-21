@@ -1,6 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wdth,wght@6..144,75..125,300..900&display=swap');
-@import "tailwindcss";
-
 :root { --ink:#102a2e; --cream:#f8f5f7; --paper:#fffdfb; --coral:#ff7168; --blue:#7464d8; --mint:#ccefd7; --line:rgba(16,42,46,.14); --font-google-sans:"Google Sans Flex","Google Sans",Arial,sans-serif; --font-geist:var(--font-google-sans); --font-manrope:var(--font-google-sans); }
 * { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
