@@ -54,7 +54,9 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://localhost'),
+    // Vercel exposes the deployment's own hostname, so preview and production
+    // deployments get a correct absolute URL without configuring one by hand.
+    'url' => env('APP_URL') ?: (env('VERCEL_URL') ? 'https://'.env('VERCEL_URL') : 'http://localhost'),
 
     'asset_url' => env('ASSET_URL'),
 
