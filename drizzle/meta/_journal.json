@@ -1,0 +1,43 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1787240000000,
+      "tag": "0000_skillvelop_lms",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787245000000,
+      "tag": "0001_manager_subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787330000000,
+      "tag": "0002_curriculum_messages",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787335000000,
+      "tag": "0003_profiles_curriculum_library",
+      "breakpoints": true
+    },
+    {"idx":4,"version":"6","when":1787340000000,"tag":"0004_gamification_quizzes_resources","breakpoints":true},
+    {"idx":5,"version":"6","when":1787345000000,"tag":"0005_course_chapters_unlocks","breakpoints":true},
+    {"idx":6,"version":"6","when":1787350000000,"tag":"0006_quiz_question_media","breakpoints":true},
+    {"idx":7,"version":"6","when":1787355000000,"tag":"0007_chapter_activities","breakpoints":true},
+    {"idx":8,"version":"6","when":1787360000000,"tag":"0008_lesson_video_activity_locks","breakpoints":true},
+    {"idx":9,"version":"6","when":1787440000000,"tag":"0009_ai_learning_platform","breakpoints":true},
+    {"idx":10,"version":"6","when":1787445000000,"tag":"0010_viyu_profiles_and_credentials","breakpoints":true},
+    {"idx":11,"version":"6","when":1787449000000,"tag":"0011_class_confirmation_ratings","breakpoints":true},
+    {"idx":12,"version":"6","when":1787533200000,"tag":"0012_learning_player_notes_attachments","breakpoints":true}
+  ]
+}

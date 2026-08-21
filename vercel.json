@@ -1,58 +1,15 @@
 {
-    "version": 2,
-    "framework": null,
-    "builds": [
-        {
-            "src": "/api/index.php",
-            "use": "vercel-php@0.6.2"
-        },
-        {
-            "src": "/public/**",
-            "use": "@vercel/static"
-        }
-    ],
-    "routes": [
-        {
-            "src": "/(admin-assets|assets|css|js|sounds|vendor|\\.well-known)/(.*)",
-            "headers": {
-                "Cache-Control": "public, max-age=31536000, immutable"
-            },
-            "dest": "/public/$1/$2"
-        },
-        {
-            "src": "/([^/]+\\.(?:png|jpg|jpeg|gif|webp|svg|ico|css|js|map|txt|woff|woff2|ttf|eot|mp3|wav))",
-            "dest": "/public/$1"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/api/index.php"
-        }
-    ],
-    "env": {
-        "APP_ENV": "production",
-        "APP_DEBUG": "false",
-        "LOG_CHANNEL": "stderr",
-        "LOG_LEVEL": "error",
-        "DB_CONNECTION": "pgsql",
-        "DB_HOST": "aws-0-ap-south-1.pooler.supabase.com",
-        "DB_PORT": "6543",
-        "DB_DATABASE": "postgres",
-        "DB_USERNAME": "postgres.dsrqzegrphnvhdjwxtlk",
-        "DB_SCHEMA": "laravel",
-        "DB_SSLMODE": "require",
-        "DB_EMULATE_PREPARES": "true",
-        "PGCONNECT_TIMEOUT": "5",
-        "SESSION_DRIVER": "database",
-        "CACHE_DRIVER": "database",
-        "QUEUE_CONNECTION": "sync",
-        "BROADCAST_DRIVER": "log",
-        "FILESYSTEM_DISK": "local",
-        "MEDIA_DRIVER": "database",
-        "APP_CONFIG_CACHE": "/tmp/storage/config.php",
-        "APP_EVENTS_CACHE": "/tmp/storage/events.php",
-        "APP_PACKAGES_CACHE": "/tmp/storage/packages.php",
-        "APP_ROUTES_CACHE": "/tmp/storage/routes.php",
-        "APP_SERVICES_CACHE": "/tmp/storage/services.php",
-        "VIEW_COMPILED_PATH": "/tmp/storage/framework/views"
-    }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["bom1"],
+  "functions": {
+    "app/api/**/*.ts": { "maxDuration": 60 }
+  },
+  "env": {
+    "DB_HOST": "aws-0-ap-south-1.pooler.supabase.com",
+    "DB_PORT": "6543",
+    "DB_DATABASE": "postgres",
+    "DB_USERNAME": "postgres.dsrqzegrphnvhdjwxtlk",
+    "DB_SSLMODE": "require"
+  }
 }
