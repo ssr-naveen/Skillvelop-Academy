@@ -17,6 +17,31 @@ $app = new Illuminate\Foundation\Application(
 
 /*
 |--------------------------------------------------------------------------
+| Writable Paths On Serverless
+|--------------------------------------------------------------------------
+|
+| Vercel serves the application from a read-only filesystem where only /tmp
+| can be written to. Sessions and cache live in the database, but Blade still
+| needs somewhere to write compiled views, so storage is relocated to /tmp.
+|
+*/
+
+$serverless = static function (string $key) {
+    return $_SERVER[$key] ?? $_ENV[$key] ?? getenv($key) ?: null;
+};
+
+if ($serverless('VERCEL') || $serverless('AWS_LAMBDA_FUNCTION_NAME')) {
+    $app->useStoragePath('/tmp/storage');
+
+    foreach (['framework/views', 'framework/cache', 'framework/sessions', 'logs', 'app/public'] as $path) {
+        if (! is_dir($directory = '/tmp/storage/'.$path)) {
+            mkdir($directory, 0777, true);
+        }
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
 | Bind Important Interfaces
 |--------------------------------------------------------------------------
 |

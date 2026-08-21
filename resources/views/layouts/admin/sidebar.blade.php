@@ -93,17 +93,9 @@
                 ->get();
             ?>
             @foreach ($permissions as $item)
-                @if ($item->action == '/user')
-                    <?php $active = 'admin/user'; ?>
-                @endif
-                @if ($item->action == '/role')
-                    <?php $active = 'admin/role'; ?>
-                @endif
-                @if ($item->action == '/category')
-                    <?php $active = 'admin/category'; ?>
-                @endif
-                <li class="nav-item @if (Session::get('active') == '{{ $item->action_title }}') active @endif">
-                    <a class="nav-link" href="{{ url($active) }}">
+                <?php $segment = ltrim($item->action, '/'); ?>
+                <li class="nav-item {{ Request::segment(2) == $segment ? 'active' : '' }}">
+                    <a class="nav-link" href="{{ url('admin/' . $segment) }}">
                         <i class="icon-paper menu-icon"></i>
                         <span class="menu-title">{{ $item->action_title }}</span>
                     </a>

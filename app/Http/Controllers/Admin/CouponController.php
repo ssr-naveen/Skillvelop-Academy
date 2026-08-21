@@ -192,7 +192,7 @@ class CouponController extends Controller
          try{
 
             // check if couponcode already exist
-            $couponcount=DB::table('coupon_codes')->where(DB::raw('BINARY `title`'),$request->code_name)->where('status','<>',2)->count();
+            $couponcount=DB::table('coupon_codes')->where('title',$request->code_name)->where('status','<>',2)->count();
 
             if($couponcount > 0)
             {
@@ -341,7 +341,7 @@ class CouponController extends Controller
 
              // check if couponcode already exist
             $couponcount=DB::table('coupon_codes')
-            ->where(DB::raw('BINARY `title`'),$request->code_name)
+            ->where('title',$request->code_name)
             ->where('status','<>',2)
             ->whereNotIn('id',[$coupon_id])
             ->count();

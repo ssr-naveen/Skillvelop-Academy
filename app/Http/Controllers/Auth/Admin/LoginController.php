@@ -3,66 +3,69 @@
 namespace App\Http\Controllers\Auth\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Providers\RouteServiceProvider;
-use Illuminate\Foundation\Auth\AuthenticatesUsers;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 
 class LoginController extends Controller
 {
-    public function login_view(){
+    public function login_view()
+    {
         Auth::logout();
+
         return view('admin.login');
     }
 
-    public function login(Request $request){
-    $request->validate([
-        'email' => 'required|exists:users,email',
-        'password' => 'required'
-    ],
-    [
-        'email.exists' => 'This Email is Not Registered in Our System'
-    ]
-    );
-
-    $deactive = User::where(['email'=>$request->email,'status'=>'0'])->latest()->first();
-
-    if($deactive!=NULL)
+    public function login(Request $request)
     {
-        Session::flash('message', 'Your Account Has Been Deactivated, Please Contact to System Administrator !!');
-        Session::flash('alert-class', 'alert-danger');
+        $request->validate([
+            'email' => 'required|string',
+            'password' => 'required',
+        ], [
+            'email.required' => 'Please enter your username or email',
+        ]);
 
-        return redirect()->back();
-    }
+        $identifier = trim($request->input('email'));
 
-        $check = $request->only('email','password');
+        // Administrators sign in with either their username or their email.
+        $user = User::where('username', $identifier)
+            ->orWhere('email', $identifier)
+            ->first();
 
-        if(Auth::attempt($check))
-        {
-            return redirect()->route('admin.dashboard');
+        if ($user === null) {
+            Session::flash('message', 'This Username is Not Registered in Our System');
+            Session::flash('alert-class', 'alert-danger');
+
+            return redirect()->back()->withInput($request->only('email'));
         }
-        else
-        {
 
+        if ($user->status == 0) {
+            Session::flash('message', 'Your Account Has Been Deactivated, Please Contact to System Administrator !!');
+            Session::flash('alert-class', 'alert-danger');
+
+            return redirect()->back()->withInput($request->only('email'));
+        }
+
+        if (! Auth::attempt(['email' => $user->email, 'password' => $request->input('password')])) {
             Session::flash('message', 'Credentials Not Matched!');
             Session::flash('alert-class', 'alert-danger');
 
-            return redirect()->back();
+            return redirect()->back()->withInput($request->only('email'));
         }
 
+        $request->session()->regenerate();
 
-}
-public function logout(Request $request)
-{
-    Auth::logout();
+        return redirect()->route('admin.dashboard');
+    }
 
-    return redirect('/admin/login');
-}
+    public function logout(Request $request)
+    {
+        Auth::logout();
 
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/admin/login');
+    }
 }

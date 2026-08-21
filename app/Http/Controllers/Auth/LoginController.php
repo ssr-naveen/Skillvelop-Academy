@@ -173,6 +173,17 @@ class LoginController extends Controller
         return redirect()->route('front.login');
     }
 
+    /**
+     * Laravel's default /login route points here. Reuse the front login view so
+     * the link on the landing page resolves instead of erroring.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function showLoginForm()
+    {
+        return $this->login_view();
+    }
+
     public function login_view()
     {
         if(Auth::check() && Auth::user()->user_type != 0){

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\MediaStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -147,11 +148,7 @@ class ProductsController extends Controller
                 $random_no = substr($no, 0, 2);
                 $final_image_name = $date . $random_no . '.' . $image->getClientOriginalExtension();
 
-                $destination_path = public_path('/uploads/product/');
-                if (!File::exists($destination_path)) {
-                    File::makeDirectory($destination_path, $mode = 0777, true, true);
-                }
-                $image->move($destination_path, $final_image_name);
+                MediaStorage::put('product', $image, $final_image_name);
             }
 
             $data = [
@@ -189,13 +186,7 @@ class ProductsController extends Controller
                         $random_no = substr($random_no, 0, 2);
                         $final_image_name = $date . $random_no . '.' . $image->getClientOriginalExtension();
                         
-                        $destination_path = public_path('/uploads/c_product/');
-                        
-                        if (!File::exists($destination_path)) {
-                            File::makeDirectory($destination_path, $mode = 0777, true, true);
-                        }
-                        
-                        $image->move($destination_path, $final_image_name);
+                        MediaStorage::put('c_product', $image, $final_image_name);
                     }
                     
                     // Add each customization entry to the $customizationData array
@@ -282,11 +273,7 @@ class ProductsController extends Controller
                 $random_no = substr($no, 0, 2);
                 $final_image_name = $date . $random_no . '.' . $image->getClientOriginalExtension();
 
-                $destination_path = public_path('/uploads/product/');
-                if (!File::exists($destination_path)) {
-                    File::makeDirectory($destination_path, $mode = 0777, true, true);
-                }
-                $image->move($destination_path, $final_image_name);
+                MediaStorage::put('product', $image, $final_image_name);
             }else{
                 $final_image_name = $imagesss->image;
             }
@@ -329,13 +316,7 @@ class ProductsController extends Controller
                         $random_no = substr($random_no, 0, 2);
                         $final_image_name = $date . $random_no . '.' . $image->getClientOriginalExtension();
                         
-                        $destination_path = public_path('/uploads/c_product/');
-                        
-                        if (!File::exists($destination_path)) {
-                            File::makeDirectory($destination_path, $mode = 0777, true, true);
-                        }
-                        
-                        $image->move($destination_path, $final_image_name);
+                        MediaStorage::put('c_product', $image, $final_image_name);
                     }
                     
                     // Add each customization entry to the $customizationData array
@@ -385,7 +366,6 @@ class ProductsController extends Controller
         }
         $allowedextension = ['jpg', 'jpeg', 'png', 'svg', 'JPG', 'JPEG'];
         if ($request->hasFile('image') && $request->file('image') != "") {
-            $filePath = public_path('/uploads/product/');
             $files = $request->file('image');
             foreach ($files as $file) {
                 $extension = $file->getClientOriginalExtension();
@@ -406,11 +386,6 @@ class ProductsController extends Controller
                 $no = str_shuffle('123456789023456789034567890456789905678906789078908909000987654321987654321876543217654321654321543214321321211');
                 $random_no = substr($no, 0, 2);
                 $final_image_name = $date . $random_no . '.' . $image->getClientOriginalExtension();
-                $destination_path = public_path('/uploads/product/');
-                if (!File::exists($destination_path)) {
-                    File::makeDirectory($destination_path, 0777, true, true);
-                }
-
                 DB::table('product_images')->insert([
                     'product_id' => $product_id,
                     'image' => $final_image_name,
@@ -418,7 +393,7 @@ class ProductsController extends Controller
                     'created_at' => date('Y-m-d H:i:s')
                 ]);
 
-                $image->move($destination_path, $final_image_name);
+                MediaStorage::put('product', $image, $final_image_name);
             }
 
             DB::commit();
@@ -438,14 +413,10 @@ class ProductsController extends Controller
         DB::beginTransaction();
         try {
 
-            $path = public_path('uploads/product');
-
             $item = DB::table('product_images')->where('id', $id)->first();
 
             if ($item != NULL) {
-                if (File::exists($path . $item->image)) {
-                    File::delete($path . $item->image);
-                }
+                MediaStorage::delete('product', $item->image);
             }
 
             DB::table('product_images')->where('id', $id)->delete();

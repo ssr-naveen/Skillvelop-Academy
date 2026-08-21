@@ -43,8 +43,9 @@
                                 @csrf
 
                                 <div class="form-group">
-                                    <input type="email" class="form-control form-control-lg" id="email"
-                                        name="email" placeholder="Username">
+                                    <input type="text" class="form-control form-control-lg" id="email"
+                                        name="email" value="{{ old('email') }}" placeholder="Username or Email"
+                                        autocomplete="username" autofocus>
                                     @error('email')
                                         <p class="text-danger" role="alert">
                                             <strong>{{ $message }}</strong>

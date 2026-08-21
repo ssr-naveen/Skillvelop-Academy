@@ -321,6 +321,27 @@ class AjaxController extends Controller
         return json_encode($data);
     }
 
+    /**
+     * Tell the user form whether an email address is already taken.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function checkEmail(Request $request)
+    {
+        $query = DB::table('users')
+            ->where('email', $request->input('email'))
+            ->where('status', '<>', 2);
+
+        // The edit screen posts the record it is editing so the user's own
+        // address is not reported back as a duplicate.
+        if ($request->filled('id')) {
+            $query->where('id', '<>', base64_decode($request->input('id')));
+        }
+
+        return response()->json(['exists' => $query->exists()]);
+    }
+
     public function stateList(Request $request)
     {
         $country_id = $request->country_id;
