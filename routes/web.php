@@ -117,6 +117,17 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['Admin']],
 
 });
 
+// Deployment smoke test: reports whether the database is reachable. Sessions
+// are stored in that same database, so the session middleware is skipped here —
+// otherwise the check would fail inside the middleware and never report why.
+Route::get('health', App\Http\Controllers\HealthController::class)
+    ->withoutMiddleware([
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        \App\Http\Middleware\VerifyCsrfToken::class,
+    ])
+    ->name('health');
+
 Route::post('admin/check-email', [App\Http\Controllers\Admin\AjaxController::class, 'checkEmail'])
     ->middleware('Admin')
     ->name('check-email');
