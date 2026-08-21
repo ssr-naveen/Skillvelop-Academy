@@ -75,7 +75,7 @@ class PreparedStatement implements D1PreparedStatement {
   }
   async run<T>(): Promise<D1Result<T>> {
     const rows = await this.execute();
-    return { results: rows as T[], success: true, meta: { changes: Number(rows.count ?? rows.length ?? 0) } };
+    return { results: rows as unknown as T[], success: true, meta: { changes: Number(rows.count ?? rows.length ?? 0) } };
   }
 }
 
@@ -86,7 +86,7 @@ class PostgresDatabase {
       const results = [];
       for (const statement of statements) {
         const rows = await (statement as PreparedStatement).execute(tx as Sql);
-        results.push({ success: true, results: rows as T[], meta: { changes: Number(rows.count ?? rows.length ?? 0) } });
+        results.push({ success: true, results: rows as unknown as T[], meta: { changes: Number(rows.count ?? rows.length ?? 0) } });
       }
       return results;
     });
