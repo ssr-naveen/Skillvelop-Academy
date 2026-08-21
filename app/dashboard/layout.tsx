@@ -1,4 +1,5 @@
 import "./lms.css";
+import "./mobile-nav.css";
 import "katex/dist/katex.min.css";
 import { MobileMenu } from "./MobileSidebar";
 
