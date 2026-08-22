@@ -90,11 +90,13 @@ function translateSql(input: string): string {
 }
 
 function isRetiredDemoSeed(source: string, bindings: unknown[]): boolean {
+  if (!/^\s*INSERT\b/i.test(source)) return false;
   const values = new Set(bindings.map((value) => String(value)));
-  if (/INSERT\s+OR\s+IGNORE\s+INTO\s+courses\b/i.test(source) &&
-      (values.has("crs_math_mastery") || values.has("crs_english_confidence"))) return true;
-  if (/INSERT\s+OR\s+IGNORE\s+INTO\s+curriculum_templates\b/i.test(source) && source.includes("tpl_math_foundations")) return true;
-  if (/INSERT\s+OR\s+IGNORE\s+INTO\s+curriculum_template_lessons\b/i.test(source) &&
+  const demoIds = ["crs_math_mastery", "crs_english_confidence", "usr_demo_tutor", "usr_demo_student"];
+  const seedTables = /\bINTO\s+(users|courses|chapters|enrollments|live_classes|activities|announcements|lessons|lesson_progress|submissions|curriculum_templates|curriculum_template_lessons)\b/i;
+  if (seedTables.test(source) && demoIds.some((id) => values.has(id))) return true;
+  if (/\bINTO\s+curriculum_templates\b/i.test(source) && source.includes("tpl_math_foundations")) return true;
+  if (/\bINTO\s+curriculum_template_lessons\b/i.test(source) &&
       (source.includes("tplles_variables") || source.includes("tplles_linear"))) return true;
   return false;
 }
@@ -125,7 +127,7 @@ class PreparedStatement implements D1PreparedStatement {
   constructor(readonly source: string) {}
   bind(...values: unknown[]) { this.bindings = values; return this; }
   async execute(executor: Sql = sqlClient()) {
-    if (isRetiredDemoSeed(this.source, this.bindings)) return [] as unknown as Awaited<ReturnType<Sql["unsafe"]>>;
+    if (isRetiredDemoSeed(this.source, this.bindings)) return [] as any;
     return executor.unsafe(translateSql(this.source), this.bindings as never[]);
   }
   async first<T>(): Promise<T | null> {
@@ -134,7 +136,7 @@ class PreparedStatement implements D1PreparedStatement {
   }
   async all<T>(): Promise<D1Result<T>> {
     const rows = await this.execute();
-    return { results: rows.map((row) => normaliseRow(row as T)), success: true, meta: { changes: Number(rows.count ?? rows.length ?? 0) } };
+    return { results: rows.map((row: unknown) => normaliseRow(row as T)), success: true, meta: { changes: Number(rows.count ?? rows.length ?? 0) } };
   }
   async run<T>(): Promise<D1Result<T>> {
     const rows = await this.execute();
@@ -185,4 +187,3 @@ export const env = {
 };
 
 export type D1DatabaseCompat = PostgresDatabase;
-
