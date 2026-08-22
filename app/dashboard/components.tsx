@@ -25,7 +25,6 @@ import {
 } from "lucide-react";
 import type { ManagerPermission, UserProfile, UserRole } from "@/db/lms";
 import { chatGPTSignOutPath } from "@/app/chatgpt-auth";
-import DesktopSidebarToggle from "./DesktopSidebarToggle";
 
 type WorkspaceRole = Exclude<UserRole, "manager">;
 const roleNav: Record<WorkspaceRole, { href: string; label: string; icon: LucideIcon; permission?: ManagerPermission }[]> = {
@@ -54,9 +53,9 @@ export function LmsShell({ profile, activeRole, activePath, eyebrow, title, subt
   const nav = roleNav[activeRole].filter((item) => profile.role !== "manager" || !item.permission || profile.permissions?.includes(item.permission));
   return <div className="lms-app">
     <aside className={`lms-sidebar lms-sidebar-${activeRole}`}>
-      <div className="sidebar-head"><a className="lms-brand" href="/" aria-label="Skillvelop home"><Image src="/skillvelop-logo.png" alt="Skillvelop" width={210} height={140} priority unoptimized /></a><DesktopSidebarToggle/></div>
+      <a className="lms-brand" href="/" aria-label="Skillvelop home"><Image src="/skillvelop-logo.png" alt="Skillvelop" width={210} height={140} priority unoptimized /></a>
       <div className="workspace-label">{profile.role === "manager" ? "manager" : activeRole} workspace</div>
-      <nav className="lms-nav" aria-label={`${activeRole} navigation`}>{nav.map((item) => { const Icon = item.icon; return <a className={(activePath ?? `/dashboard/${activeRole}`) === item.href ? "active" : ""} href={item.href} key={item.href} title={item.label}><span><Icon aria-hidden="true" size={18} strokeWidth={1.9} /></span><b>{item.label}</b></a>; })}</nav>
+      <nav className="lms-nav" aria-label={`${activeRole} navigation`}>{nav.map((item) => { const Icon = item.icon; return <a className={(activePath ?? `/dashboard/${activeRole}`) === item.href ? "active" : ""} href={item.href} key={item.href}><span><Icon aria-hidden="true" size={18} strokeWidth={1.9} /></span>{item.label}</a>; })}</nav>
       {profile.role === "admin" && <div className="role-preview"><small>SWITCH WORKSPACE</small><a href="/dashboard/tutor">Tutor dashboard <Send aria-hidden="true" size={13} /></a><a href="/dashboard/student">Student dashboard <Send aria-hidden="true" size={13} /></a></div>}
       <div className="sidebar-profile"><span>{initials(profile.name)}</span><a className="profile-link" href="/dashboard/profile"><strong>{profile.name}</strong><small>{profile.role} · profile</small></a><a href={chatGPTSignOutPath("/")} aria-label="Sign out"><LogOut aria-hidden="true" size={17} /></a></div>
     </aside>
