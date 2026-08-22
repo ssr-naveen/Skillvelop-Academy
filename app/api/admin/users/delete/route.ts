@@ -17,23 +17,24 @@ export async function POST(request: Request) {
   const form = await request.formData();
   const userId = String(form.get("userId") ?? "").trim();
   if (!userId) return redirectTo(request, "/dashboard/admin/users?error=delete-user");
-
-  if (userId === profile.id) {
-    return redirectTo(request, "/dashboard/admin/users?error=self-delete");
-  }
+  if (userId === profile.id) return redirectTo(request, "/dashboard/admin/users?error=self-delete");
 
   const db = database();
-  const target = await db.prepare("SELECT id, role FROM users WHERE id=? AND status!='deleted'").bind(userId).first<{ id: string; role: string }>();
+  const target = await db.prepare("SELECT id, role FROM users WHERE id=? AND status='active'").bind(userId).first<{ id: string; role: string }>();
   if (!target) return redirectTo(request, "/dashboard/admin/users?error=user-not-found");
 
   if (target.role === "admin" && profile.role !== "admin") {
-    return NextResponse.json({ error: "Only a full administrator can delete another administrator" }, { status: 403 });
+    return NextResponse.json({ error: "Only a full administrator can remove another administrator" }, { status: 403 });
   }
 
-  await db.batch([
-    db.prepare("DELETE FROM manager_permissions WHERE manager_id=?").bind(userId),
-    db.prepare("UPDATE users SET status='deleted' WHERE id=?").bind(userId),
-  ]);
-
-  return redirectTo(request, "/dashboard/admin/users?deleted=user");
+  try {
+    await db.batch([
+      db.prepare("DELETE FROM manager_permissions WHERE manager_id=?").bind(userId),
+      db.prepare("UPDATE users SET status='suspended' WHERE id=?").bind(userId),
+    ]);
+    return redirectTo(request, "/dashboard/admin/users?deleted=user");
+  } catch (error) {
+    console.error("User removal failed", error);
+    return redirectTo(request, "/dashboard/admin/users?error=delete-user");
+  }
 }
