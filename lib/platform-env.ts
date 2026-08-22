@@ -75,6 +75,8 @@ function translateSql(input: string): string {
     .replace(/INSERT\s+OR\s+IGNORE\s+INTO/gi, "INSERT INTO")
     .replace(/GROUP_CONCAT\(([^,]+),\s*'([^']*)'\)/gi, "STRING_AGG($1, '$2')")
     .replace(/\bMAX\(level\s*,/gi, "GREATEST(level,")
+    .replace(/\bxp\s*=\s*xp\s*\+/gi, "xp=student_gamification.xp+")
+    .replace(/GREATEST\(level\s*,\s*CAST\(\(xp\s*\+/gi, "GREATEST(student_gamification.level,CAST((student_gamification.xp+")
     .replace(applicationTablePattern, (_match, keyword: string, table: string) => `${keyword} public.${table}`);
 
   query = normalisePostgresGrouping(query);
@@ -85,6 +87,16 @@ function translateSql(input: string): string {
 
   let index = 0;
   return query.replace(/\?/g, () => `$${++index}`);
+}
+
+function isRetiredDemoSeed(source: string, bindings: unknown[]): boolean {
+  const values = new Set(bindings.map((value) => String(value)));
+  if (/INSERT\s+OR\s+IGNORE\s+INTO\s+courses\b/i.test(source) &&
+      (values.has("crs_math_mastery") || values.has("crs_english_confidence"))) return true;
+  if (/INSERT\s+OR\s+IGNORE\s+INTO\s+curriculum_templates\b/i.test(source) && source.includes("tpl_math_foundations")) return true;
+  if (/INSERT\s+OR\s+IGNORE\s+INTO\s+curriculum_template_lessons\b/i.test(source) &&
+      (source.includes("tplles_variables") || source.includes("tplles_linear"))) return true;
+  return false;
 }
 
 let client: Sql | null = null;
@@ -113,6 +125,7 @@ class PreparedStatement implements D1PreparedStatement {
   constructor(readonly source: string) {}
   bind(...values: unknown[]) { this.bindings = values; return this; }
   async execute(executor: Sql = sqlClient()) {
+    if (isRetiredDemoSeed(this.source, this.bindings)) return [] as unknown as Awaited<ReturnType<Sql["unsafe"]>>;
     return executor.unsafe(translateSql(this.source), this.bindings as never[]);
   }
   async first<T>(): Promise<T | null> {
