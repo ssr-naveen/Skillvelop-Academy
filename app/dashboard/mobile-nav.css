@@ -1,5 +1,8 @@
 .desktop-sidebar-toggle{display:none!important}
 .mobile-nav-overlay{display:none}
+@media(max-width:900px), (hover:none) and (pointer:coarse){
+  .desktop-sidebar-toggle,.desktop-sidebar-menu{display:none!important}
+}
 @media(max-width:760px){
   .lms-topbar .mobile-menu{display:none!important}
   body>.mobile-menu,.mobile-menu{box-sizing:border-box}
