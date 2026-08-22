@@ -1,4 +1,6 @@
-@media(min-width:761px){
+.desktop-sidebar-toggle{display:none!important}
+.desktop-sidebar-menu{display:none}
+@media(min-width:901px) and (hover:hover) and (pointer:fine){
   .desktop-sidebar-menu{position:fixed;top:15px;left:250px;width:38px;height:38px;border:1px solid #dbe1dc;border-radius:10px;background:#fff;color:#173238;display:grid;place-items:center;cursor:pointer;z-index:35;box-shadow:0 4px 14px rgba(16,42,46,.08);transition:left .22s ease,background .2s ease,border-color .2s ease,transform .2s ease}
   .desktop-sidebar-menu:hover{background:#f7f9f7;border-color:#cfd8d1;transform:translateY(-1px)}
   .lms-app,.lms-sidebar,.desktop-sidebar-menu{transition:grid-template-columns .22s ease,width .22s ease,padding .22s ease,left .22s ease}
@@ -17,4 +19,6 @@
   .lms-app.sidebar-collapsed~.desktop-sidebar-menu{left:90px}
   .lms-app.sidebar-collapsed .lms-topbar{padding-left:62px}
 }
-@media(max-width:760px){.desktop-sidebar-menu{display:none!important}}
+@media(max-width:900px), (hover:none), (pointer:coarse){
+  .desktop-sidebar-toggle,.desktop-sidebar-menu{display:none!important}
+}
