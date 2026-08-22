@@ -3,12 +3,14 @@
 @media(min-width:901px) and (hover:hover) and (pointer:fine){
   .desktop-sidebar-menu{position:fixed;top:15px;left:250px;width:38px;height:38px;border:1px solid #dbe1dc;border-radius:10px;background:#fff;color:#173238;display:grid;place-items:center;cursor:pointer;z-index:35;box-shadow:0 4px 14px rgba(16,42,46,.08);transition:left .22s ease,background .2s ease,border-color .2s ease,transform .2s ease}
   .desktop-sidebar-menu:hover{background:#f7f9f7;border-color:#cfd8d1;transform:translateY(-1px)}
+  .lms-topbar>div:first-child{padding-left:48px;min-width:0}
+  .crumb{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .lms-app,.lms-sidebar,.desktop-sidebar-menu{transition:grid-template-columns .22s ease,width .22s ease,padding .22s ease,left .22s ease}
   .lms-app.sidebar-collapsed{grid-template-columns:78px minmax(0,1fr)}
   .lms-app.sidebar-collapsed .lms-sidebar{width:78px;padding-left:12px;padding-right:12px}
   .lms-app.sidebar-collapsed .lms-main{grid-column:2}
-  .lms-app.sidebar-collapsed .lms-brand{height:56px;padding:0;overflow:hidden;justify-content:center;position:relative}
-  .lms-app.sidebar-collapsed .lms-brand img{width:112px;max-width:none;height:auto;position:absolute;left:-29px;top:-1px}
+  .lms-app.sidebar-collapsed .lms-brand{height:64px;padding:0;overflow:visible;justify-content:center;align-items:center}
+  .lms-app.sidebar-collapsed .lms-brand img{position:static!important;width:54px!important;height:auto!important;max-width:54px!important;object-fit:contain}
   .lms-app.sidebar-collapsed .workspace-label,.lms-app.sidebar-collapsed .role-preview,.lms-app.sidebar-collapsed .sidebar-profile .profile-link,.lms-app.sidebar-collapsed .sidebar-profile>a:last-child{display:none}
   .lms-app.sidebar-collapsed .lms-nav{align-items:center;margin-top:10px}
   .lms-app.sidebar-collapsed .lms-nav a{position:relative;width:46px;height:42px;padding:0;justify-content:center;gap:0;font-size:0;border-radius:10px}
@@ -17,7 +19,7 @@
   .lms-app.sidebar-collapsed .sidebar-profile{grid-template-columns:1fr;padding:12px 0 0;margin-top:auto;justify-items:center}
   .lms-app.sidebar-collapsed .sidebar-profile>span{width:38px;height:38px}
   .lms-app.sidebar-collapsed~.desktop-sidebar-menu{left:90px}
-  .lms-app.sidebar-collapsed .lms-topbar{padding-left:62px}
+  .lms-app.sidebar-collapsed .lms-topbar{padding-left:34px}
 }
 @media(max-width:900px), (hover:none), (pointer:coarse){
   .desktop-sidebar-toggle,.desktop-sidebar-menu{display:none!important}
