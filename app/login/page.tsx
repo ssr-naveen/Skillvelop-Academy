@@ -129,10 +129,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     </header>
 
     <section className={styles.stage}>
-      <div className={styles.intro}>
-        <span className={styles.eyebrow}><span className={styles.live}/> Live 1:1 learning</span>
-        <h1>Your next class is <em>ready</em> when you are.</h1>
-        <p className={styles.lead}>Live teaching, coursework and feedback in one workspace.</p>
+      <div className={styles.left}>
+        <div className={styles.intro}>
+          <span className={styles.eyebrow}><span className={styles.live}/> Live 1:1 learning</span>
+          <h1>Your next class is <em>ready</em> when you are.</h1>
+          <p className={styles.lead}>Live teaching, coursework and feedback in one workspace.</p>
+        </div>
         <div className={styles.chips}>
           {chips.map(({ icon: Icon, label }) => <span className={styles.chip} key={label}><Icon size={15}/>{label}</span>)}
         </div>
@@ -170,6 +172,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
         <p className={styles.support}>Accounts are created by your administrator. <a href={`mailto:${supportEmail}`}>Need help?</a></p>
       </div>
+
     </section>
 
     <footer className={styles.footer}>
