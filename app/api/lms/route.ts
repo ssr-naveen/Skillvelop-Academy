@@ -38,7 +38,8 @@ async function updateCourseProgress(courseId:string,studentId:string) {
   const counts=await db.prepare(`SELECT
     (SELECT COUNT(*) FROM lessons WHERE course_id=? AND status='published')+(SELECT COUNT(*) FROM quizzes WHERE course_id=? AND status='published')+(SELECT COUNT(*) FROM activities WHERE course_id=? AND status='published') total,
     (SELECT COUNT(*) FROM lesson_progress lp JOIN lessons l ON l.id=lp.lesson_id WHERE l.course_id=? AND l.status='published' AND lp.student_id=?)+(SELECT COUNT(DISTINCT qa.quiz_id) FROM quiz_attempts qa JOIN quizzes q ON q.id=qa.quiz_id WHERE q.course_id=? AND q.status='published' AND qa.student_id=?)+(SELECT COUNT(*) FROM submissions s JOIN activities a ON a.id=s.activity_id WHERE a.course_id=? AND a.status='published' AND s.student_id=?) done`).bind(courseId,courseId,courseId,courseId,studentId,courseId,studentId,courseId,studentId).first<{total:number;done:number}>();
-  const progress=counts?.total?Math.min(100,Math.round((counts.done/counts.total)*100)):0,now=new Date().toISOString();
+  const total=Number(counts?.total??0),done=Number(counts?.done??0);
+  const progress=total?Math.min(100,Math.round((done/total)*100)):0,now=new Date().toISOString();
   await db.prepare("UPDATE enrollments SET progress=? WHERE course_id=? AND student_id=?").bind(progress,courseId,studentId).run();
   if(progress===100)await db.prepare("INSERT OR IGNORE INTO certificates (id,student_id,course_id,certificate_code,issued_at) VALUES (?,?,?,?,?)").bind(createId("crt"),studentId,courseId,`SKV-${crypto.randomUUID().slice(0,8).toUpperCase()}`,now).run();
 }
@@ -150,7 +151,7 @@ export async function POST(request: Request) {
 
   if(action==="set-content-unlock"){
     if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});const tutorId=profile.role==='admin'?'usr_demo_tutor':profile.id;const entity=allowed(value(form,"entity"),['course','chapter','lesson','quiz','activity']as const,'lesson');const id=value(form,"id"),next=value(form,"next")==='1'?1:0;const returnTo=value(form,"returnTo");
-    if(entity==="quiz"&&next===1){const readiness=await db.prepare("SELECT q.question_count,(SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id=q.id) questions FROM quizzes q WHERE q.id=? AND q.tutor_id=?").bind(id,tutorId).first<{question_count:number;questions:number}>();if(!readiness||readiness.questions!==readiness.question_count)return redirectTo(request,`${returnTo.startsWith('/dashboard/tutor/')?returnTo:'/dashboard/tutor/curriculum'}${returnTo.includes('?')?'&':'?'}error=quiz-incomplete`);}
+    if(entity==="quiz"&&next===1){const readiness=await db.prepare("SELECT q.question_count,(SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id=q.id) questions FROM quizzes q WHERE q.id=? AND q.tutor_id=?").bind(id,tutorId).first<{question_count:number;questions:number}>();if(!readiness||Number(readiness.questions)!==Number(readiness.question_count))return redirectTo(request,`${returnTo.startsWith('/dashboard/tutor/')?returnTo:'/dashboard/tutor/curriculum'}${returnTo.includes('?')?'&':'?'}error=quiz-incomplete`);}
     const config={course:{table:'courses',owner:'tutor_id'},chapter:{table:'chapters',owner:'tutor_id'},lesson:{table:'lessons',owner:'tutor_id'},quiz:{table:'quizzes',owner:'tutor_id'},activity:{table:'activities',owner:'tutor_id'}}[entity];const result=await db.prepare(`UPDATE ${config.table} SET is_unlocked=? WHERE id=? AND ${config.owner}=?`).bind(next,id,tutorId).run();if(!result.meta.changes)return NextResponse.json({error:"Content not found"},{status:404});return redirectTo(request,returnTo.startsWith('/dashboard/tutor/')?returnTo:'/dashboard/tutor/curriculum?updated=unlock');
   }
 
@@ -229,11 +230,12 @@ export async function POST(request: Request) {
     const type=allowed(value(form,"type"),['mcq','fill_blank','drag_drop','order','matching','one_word']as const,'mcq'),prompt=value(form,"prompt").slice(0,4000),answer=value(form,"answer").slice(0,4000);
     const options=value(form,"options").split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,30);
     const questionReturn=returnTo.startsWith('/dashboard/tutor/')?returnTo:"/dashboard/tutor/quizzes";
-    if(!quiz||quiz.questions>=quiz.question_count||!prompt||!answer||((type==='mcq'||type==='matching'||type==='order'||type==='drag_drop')&&options.length<2))return redirectTo(request,`${questionReturn}${questionReturn.includes('?')?'&':'?'}error=${quiz&&quiz.questions>=quiz.question_count?'question-limit':'question'}`);
+    const questionsAdded=Number(quiz?.questions??0),requiredQuestions=Number(quiz?.question_count??0);
+    if(!quiz||questionsAdded>=requiredQuestions||!prompt||!answer||((type==='mcq'||type==='matching'||type==='order'||type==='drag_drop')&&options.length<2))return redirectTo(request,`${questionReturn}${questionReturn.includes('?')?'&':'?'}error=${quiz&&questionsAdded>=requiredQuestions?'question-limit':'question'}`);
     const questionId=createId("qq"),image=form.get("image");let imageKey="",imageName="",imageType="",imageSize=0;
     if(image instanceof File&&image.size>0){const accepted=['image/png','image/jpeg','image/webp','image/gif'];if(image.size>5*1024*1024||!accepted.includes(image.type))return redirectTo(request,`${questionReturn}${questionReturn.includes('?')?'&':'?'}error=question-image`);imageName=image.name.replace(/[^a-zA-Z0-9._-]/g,'_');imageType=image.type;imageSize=image.size;imageKey=`quiz-questions/${quizId}/${questionId}-${imageName}`;await env.FILES.put(imageKey,await image.arrayBuffer(),{httpMetadata:{contentType:imageType}});}
-    await db.prepare("INSERT INTO quiz_questions (id,quiz_id,type,prompt,options_json,answer_json,points,position,image_r2_key,image_file_name,image_content_type,image_size_bytes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(questionId,quizId,type,prompt,JSON.stringify(options),JSON.stringify(answer.trim()),Math.max(1,Number(value(form,"points"))||10),quiz.questions+1,imageKey,imageName,imageType,imageSize).run();
-    if(quiz.scope==="standalone"&&quiz.questions+1===quiz.question_count)await db.prepare("UPDATE quizzes SET is_unlocked=1 WHERE id=? AND tutor_id=?").bind(quizId,tutorId).run();
+    await db.prepare("INSERT INTO quiz_questions (id,quiz_id,type,prompt,options_json,answer_json,points,position,image_r2_key,image_file_name,image_content_type,image_size_bytes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(questionId,quizId,type,prompt,JSON.stringify(options),JSON.stringify(answer.trim()),Math.max(1,Number(value(form,"points"))||10),questionsAdded+1,imageKey,imageName,imageType,imageSize).run();
+    if(quiz.scope==="standalone"&&questionsAdded+1===requiredQuestions)await db.prepare("UPDATE quizzes SET is_unlocked=1 WHERE id=? AND tutor_id=?").bind(quizId,tutorId).run();
     return redirectTo(request,`${questionReturn}${questionReturn.includes('?')?'&':'?'}updated=question`);
   }
 
@@ -242,7 +244,8 @@ export async function POST(request: Request) {
     const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id,quizId=value(form,"quizId"),target=allowed(value(form,"target"),["all","student"] as const,"student"),studentId=target==="student"?value(form,"studentId"):null;
     const quiz=await db.prepare("SELECT q.id,q.question_count,(SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id=q.id) questions FROM quizzes q WHERE q.id=? AND q.tutor_id=? AND q.scope='standalone' AND q.status='published'").bind(quizId,tutorId).first<{id:string;question_count:number;questions:number}>();
     const student=studentId?await db.prepare("SELECT id FROM users WHERE id=? AND role='student' AND status='active'").bind(studentId).first():null;
-    if(!quiz||quiz.questions!==quiz.question_count||(target==="student"&&!student))return redirectTo(request,`/dashboard/tutor/quizzes?error=${quiz&&quiz.questions!==quiz.question_count?'quiz-incomplete':'assignment'}`);
+    const questionsAdded=Number(quiz?.questions??0),requiredQuestions=Number(quiz?.question_count??0);
+    if(!quiz||questionsAdded!==requiredQuestions||(target==="student"&&!student))return redirectTo(request,`/dashboard/tutor/quizzes?error=${quiz&&questionsAdded!==requiredQuestions?'quiz-incomplete':'assignment'}`);
     const existing=studentId?await db.prepare("SELECT id FROM quiz_assignments WHERE quiz_id=? AND student_id=? AND status='active'").bind(quizId,studentId).first():await db.prepare("SELECT id FROM quiz_assignments WHERE quiz_id=? AND student_id IS NULL AND status='active'").bind(quizId).first();
     if(!existing)await db.prepare("INSERT INTO quiz_assignments (id,quiz_id,student_id,assigned_by,status,assigned_at,revoked_at) VALUES (?,?,?,?,'active',?,NULL)").bind(createId("qia"),quizId,studentId,tutorId,new Date().toISOString()).run();
     await db.prepare("UPDATE quizzes SET is_unlocked=1 WHERE id=? AND tutor_id=?").bind(quizId,tutorId).run();
