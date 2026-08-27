@@ -92,9 +92,9 @@ function translateSql(input: string): string {
 function isRetiredDemoSeed(source: string, bindings: unknown[]): boolean {
   if (!/^\s*INSERT\b/i.test(source)) return false;
   const values = new Set(bindings.map((value) => String(value)));
-  const demoIds = ["crs_math_mastery", "crs_english_confidence", "usr_demo_tutor", "usr_demo_student"];
-  const seedTables = /\bINTO\s+(users|courses|chapters|enrollments|live_classes|activities|announcements|lessons|lesson_progress|submissions|curriculum_templates|curriculum_template_lessons)\b/i;
-  if (seedTables.test(source) && demoIds.some((id) => values.has(id))) return true;
+  const retiredCourseIds = ["crs_math_mastery", "crs_english_confidence"];
+  if (/\bINTO\s+users\b/i.test(source) && ["usr_demo_tutor", "usr_demo_student"].some((id) => values.has(id))) return true;
+  if (retiredCourseIds.some((id) => values.has(id) || source.includes(id))) return true;
   if (/\bINTO\s+curriculum_templates\b/i.test(source) && source.includes("tpl_math_foundations")) return true;
   if (/\bINTO\s+curriculum_template_lessons\b/i.test(source) &&
       (source.includes("tplles_variables") || source.includes("tplles_linear"))) return true;

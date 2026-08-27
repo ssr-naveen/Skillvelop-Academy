@@ -13,7 +13,7 @@ const typeOptions: { value: QuestionType; label: string; hint: string; icon: typ
   { value: "order", label: "Correct order", hint: "Arrange steps in sequence", icon: ListOrdered },
   { value: "drag_drop", label: "Drag & drop", hint: "Move items into the right order", icon: Rows3 },
 ];
-export default function QuizQuestionBuilder({ quizId, nextPosition }: { quizId: string; nextPosition: number }) {
+export default function QuizQuestionBuilder({ quizId, nextPosition, targetCount, returnTo="/dashboard/tutor/quizzes" }: { quizId: string; nextPosition: number; targetCount: number; returnTo?: string }) {
   const [type, setType] = useState<QuestionType>("mcq");
   const [prompt, setPrompt] = useState("");
   const [options, setOptions] = useState(["", "", "", ""]);
@@ -38,6 +38,7 @@ export default function QuizQuestionBuilder({ quizId, nextPosition }: { quizId: 
   return <form className="question-builder" action="/api/lms" method="post" encType="multipart/form-data">
     <input type="hidden" name="action" value="add-quiz-question" />
     <input type="hidden" name="quizId" value={quizId} />
+    <input type="hidden" name="returnTo" value={returnTo} />
     <input type="hidden" name="type" value={type} />
     <input type="hidden" name="options" value={serialized.join("\n")} />
     <input type="hidden" name="answer" value={correctAnswer} />
@@ -61,6 +62,6 @@ export default function QuizQuestionBuilder({ quizId, nextPosition }: { quizId: 
       {type === "matching" && <div className="answer-editor"><div className="matching-head"><span>LEFT ITEM</span><span>MATCHES WITH</span><span /></div>{pairs.map((pair, index) => <div className="matching-editor-row math-matching-row" key={index}><MathComposer value={pair[0]} onChange={value=>updatePair(index,0,value)} compact required={index<2} placeholder={`Item ${index + 1}`}/><MathComposer value={pair[1]} onChange={value=>updatePair(index,1,value)} compact required={index<2} placeholder={`Match ${index + 1}`}/><button type="button" aria-label={`Remove pair ${index + 1}`} onClick={() => setPairs(items => items.filter((_, i) => i !== index))}><Trash2 size={16}/></button></div>)}<button className="add-row" type="button" onClick={() => setPairs(items => [...items, ["", ""]])}><Plus size={16}/> Add matching pair</button></div>}
     </section>
 
-    <footer className="builder-footer"><div className="form-row"><label>Points<input name="points" type="number" min="1" defaultValue="10" /></label><label>Question number<input name="position" type="number" min="1" defaultValue={nextPosition} /></label></div><button className="publish-question" type="submit" disabled={!prompt.trim() || !correctAnswer.trim()}><Sparkles size={17} /> Add interactive question</button></footer>
+    <footer className="builder-footer"><div className="form-row"><label>Points<input name="points" type="number" min="1" defaultValue="10" /></label><label>Question number<input readOnly value={`${nextPosition} of ${targetCount}`} /></label></div><button className="publish-question" type="submit" disabled={nextPosition>targetCount||!prompt.trim() || !correctAnswer.trim()}><Sparkles size={17} /> Add question {nextPosition} of {targetCount}</button></footer>
   </form>;
 }

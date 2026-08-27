@@ -12,10 +12,10 @@ function allowed<T extends string>(input: string, options: readonly T[], fallbac
 function addMonths(value: Date, months: number) { const next = new Date(value); next.setMonth(next.getMonth() + months); return next; }
 
 const lessonFileExtensions = new Set(["pdf","ppt","pptx","odp","zip","doc","docx","odt","rtf","txt","csv","xls","xlsx","ods","png","jpg","jpeg","webp","gif","mp4","webm","mov","mp3","m4a","wav","ogg"]);
-const assignmentFileExtensions = new Set(["pdf","ppt","pptx","odp","doc","docx","odt","rtf","txt","csv","xls","xlsx","ods","png","jpg","jpeg","webp","gif"]);
+const assignmentFileExtensions = new Set(["pdf","ppt","pptx","odp","doc","docx","odt","rtf","txt","md","tex","csv","xls","xlsx","ods","png","jpg","jpeg","webp","gif"]);
 function extension(file: File) { return file.name.split(".").pop()?.toLowerCase() ?? ""; }
 function safeFileName(file: File) { return file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-180); }
-function safeContentType(file:File){const types:Record<string,string>={pdf:"application/pdf",ppt:"application/vnd.ms-powerpoint",pptx:"application/vnd.openxmlformats-officedocument.presentationml.presentation",odp:"application/vnd.oasis.opendocument.presentation",zip:"application/zip",doc:"application/msword",docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",odt:"application/vnd.oasis.opendocument.text",rtf:"application/rtf",txt:"text/plain",csv:"text/csv",xls:"application/vnd.ms-excel",xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",ods:"application/vnd.oasis.opendocument.spreadsheet",png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",webp:"image/webp",gif:"image/gif",mp4:"video/mp4",webm:"video/webm",mov:"video/quicktime",mp3:"audio/mpeg",m4a:"audio/mp4",wav:"audio/wav",ogg:"audio/ogg"};return types[extension(file)]??"application/octet-stream";}
+function safeContentType(file:File){const types:Record<string,string>={pdf:"application/pdf",ppt:"application/vnd.ms-powerpoint",pptx:"application/vnd.openxmlformats-officedocument.presentationml.presentation",odp:"application/vnd.oasis.opendocument.presentation",zip:"application/zip",doc:"application/msword",docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",odt:"application/vnd.oasis.opendocument.text",rtf:"application/rtf",txt:"text/plain",md:"text/markdown",tex:"text/plain",csv:"text/csv",xls:"application/vnd.ms-excel",xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",ods:"application/vnd.oasis.opendocument.spreadsheet",png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",webp:"image/webp",gif:"image/gif",mp4:"video/mp4",webm:"video/webm",mov:"video/quicktime",mp3:"audio/mpeg",m4a:"audio/mp4",wav:"audio/wav",ogg:"audio/ogg"};return types[extension(file)]??"application/octet-stream";}
 function lessonResourceType(file: File, preferred?: string) {
   if (preferred && preferred !== "html") return preferred;
   const ext=extension(file);
@@ -149,7 +149,9 @@ export async function POST(request: Request) {
   }
 
   if(action==="set-content-unlock"){
-    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});const tutorId=profile.role==='admin'?'usr_demo_tutor':profile.id;const entity=allowed(value(form,"entity"),['course','chapter','lesson','quiz','activity']as const,'lesson');const id=value(form,"id"),next=value(form,"next")==='1'?1:0;const config={course:{table:'courses',owner:'tutor_id'},chapter:{table:'chapters',owner:'tutor_id'},lesson:{table:'lessons',owner:'tutor_id'},quiz:{table:'quizzes',owner:'tutor_id'},activity:{table:'activities',owner:'tutor_id'}}[entity];const result=await db.prepare(`UPDATE ${config.table} SET is_unlocked=? WHERE id=? AND ${config.owner}=?`).bind(next,id,tutorId).run();if(!result.meta.changes)return NextResponse.json({error:"Content not found"},{status:404});const returnTo=value(form,"returnTo");return redirectTo(request,returnTo.startsWith('/dashboard/tutor/')?returnTo:'/dashboard/tutor/curriculum?updated=unlock');
+    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});const tutorId=profile.role==='admin'?'usr_demo_tutor':profile.id;const entity=allowed(value(form,"entity"),['course','chapter','lesson','quiz','activity']as const,'lesson');const id=value(form,"id"),next=value(form,"next")==='1'?1:0;const returnTo=value(form,"returnTo");
+    if(entity==="quiz"&&next===1){const readiness=await db.prepare("SELECT q.question_count,(SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id=q.id) questions FROM quizzes q WHERE q.id=? AND q.tutor_id=?").bind(id,tutorId).first<{question_count:number;questions:number}>();if(!readiness||readiness.questions!==readiness.question_count)return redirectTo(request,`${returnTo.startsWith('/dashboard/tutor/')?returnTo:'/dashboard/tutor/curriculum'}${returnTo.includes('?')?'&':'?'}error=quiz-incomplete`);}
+    const config={course:{table:'courses',owner:'tutor_id'},chapter:{table:'chapters',owner:'tutor_id'},lesson:{table:'lessons',owner:'tutor_id'},quiz:{table:'quizzes',owner:'tutor_id'},activity:{table:'activities',owner:'tutor_id'}}[entity];const result=await db.prepare(`UPDATE ${config.table} SET is_unlocked=? WHERE id=? AND ${config.owner}=?`).bind(next,id,tutorId).run();if(!result.meta.changes)return NextResponse.json({error:"Content not found"},{status:404});return redirectTo(request,returnTo.startsWith('/dashboard/tutor/')?returnTo:'/dashboard/tutor/curriculum?updated=unlock');
   }
 
   if (action === "create-curriculum-template") {
@@ -194,30 +196,96 @@ export async function POST(request: Request) {
     if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id;const courseId=value(form,"courseId"),studentId=value(form,"studentId");const valid=await db.prepare("SELECT c.id FROM courses c JOIN users u ON u.id=? AND u.role='student' WHERE c.id=? AND c.tutor_id=?").bind(studentId,courseId,tutorId).first();if(!valid)return NextResponse.json({error:"Course or student unavailable"},{status:404});await db.prepare("INSERT OR IGNORE INTO enrollments (id,course_id,student_id,progress,created_at) VALUES (?,?,?,0,?)").bind(createId("enr"),courseId,studentId,new Date().toISOString()).run();return redirectTo(request,"/dashboard/tutor/courses?updated=enrolment");
   }
 
+  if(action==="revoke-course-student"){
+    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});
+    const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id,courseId=value(form,"courseId"),studentId=value(form,"studentId");
+    const result=await db.prepare("DELETE FROM enrollments WHERE course_id=? AND student_id=? AND EXISTS(SELECT 1 FROM courses c WHERE c.id=? AND c.tutor_id=?)").bind(courseId,studentId,courseId,tutorId).run();
+    if(!result.meta.changes)return NextResponse.json({error:"Course assignment not found"},{status:404});
+    return redirectTo(request,"/dashboard/tutor/courses?updated=revoked");
+  }
+
   if(action==="upload-lesson-resource"){
     if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id;const lessonId=value(form,"lessonId");const lesson=await db.prepare("SELECT id FROM lessons WHERE id=? AND tutor_id=?").bind(lessonId,tutorId).first();const file=form.get("file");if(!lesson||!(file instanceof File))return redirectTo(request,"/dashboard/tutor/curriculum?error=resource");try{await storeLessonFile(lessonId,file,value(form,"title")||file.name);}catch{return redirectTo(request,"/dashboard/tutor/curriculum?error=resource-type");}return redirectTo(request,"/dashboard/tutor/curriculum?updated=resource");
   }
 
   if(action==="create-quiz"){
-    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id,courseId=value(form,"courseId"),chapterId=value(form,"chapterId")||null;const course=await db.prepare("SELECT id FROM courses WHERE id=? AND tutor_id=?").bind(courseId,tutorId).first();const chapter=chapterId?await db.prepare("SELECT id FROM chapters WHERE id=? AND course_id=? AND tutor_id=?").bind(chapterId,courseId,tutorId).first():null;const title=value(form,"title"),description=value(form,"description"),kind=allowed(value(form,"kind"),['quiz','assessment','final_assessment']as const,'quiz');if(!course||!title||!description||(chapterId&&!chapter))return redirectTo(request,"/dashboard/tutor/quizzes?error=quiz");const limit=kind==='quiz'?Math.max(1,Math.min(10,Number(value(form,"attemptLimit"))||3)):1;await db.prepare("INSERT INTO quizzes (id,course_id,chapter_id,tutor_id,title,description,kind,attempt_limit,is_unlocked,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,'published',?)").bind(createId("qiz"),courseId,chapterId,tutorId,title,description,kind,limit,form.get('isUnlocked')?1:0,new Date().toISOString()).run();const returnTo=value(form,"returnTo");return redirectTo(request,returnTo.startsWith('/dashboard/tutor/')?returnTo:"/dashboard/tutor/quizzes?created=quiz");
+    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});
+    const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id,scope=allowed(value(form,"scope"),["course","standalone"] as const,"course"),courseId=scope==="course"?value(form,"courseId"):null,chapterId=scope==="course"?(value(form,"chapterId")||null):null;
+    const course=courseId?await db.prepare("SELECT id FROM courses WHERE id=? AND tutor_id=?").bind(courseId,tutorId).first():null;
+    const chapter=chapterId&&courseId?await db.prepare("SELECT id FROM chapters WHERE id=? AND course_id=? AND tutor_id=?").bind(chapterId,courseId,tutorId).first():null;
+    const title=value(form,"title").slice(0,180),description=value(form,"description").slice(0,3000),kind=scope==="standalone"?"quiz":allowed(value(form,"kind"),['quiz','assessment','final_assessment']as const,'quiz');
+    const requestedCount=Number(value(form,"questionCount")),questionCount=[5,10,15,20,25].includes(requestedCount)?requestedCount:5;
+    const passingPercentage=Math.max(0,Math.min(100,Number(value(form,"passingPercentage"))||60));
+    if(!title||!description||(scope==="course"&&(!course||(chapterId&&!chapter))))return redirectTo(request,scope==="standalone"?"/dashboard/tutor/quizzes?error=quiz":"/dashboard/tutor/curriculum?error=quiz");
+    const limit=scope==="standalone"?1:kind==='quiz'?Math.max(1,Math.min(10,Number(value(form,"attemptLimit"))||3)):1;
+    await db.prepare("INSERT INTO quizzes (id,course_id,chapter_id,tutor_id,title,description,kind,attempt_limit,is_unlocked,status,scope,question_count,passing_percentage,created_at) VALUES (?,?,?,?,?,?,?,?,0,'published',?,?,?,?)").bind(createId("qiz"),courseId,chapterId,tutorId,title,description,kind,limit,scope,questionCount,passingPercentage,new Date().toISOString()).run();
+    const returnTo=value(form,"returnTo");return redirectTo(request,returnTo.startsWith('/dashboard/tutor/')?returnTo:"/dashboard/tutor/quizzes?created=quiz");
   }
 
   if(action==="add-quiz-question"){
     if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});
-    const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id,quizId=value(form,"quizId");
-    const quiz=await db.prepare("SELECT id FROM quizzes WHERE id=? AND tutor_id=?").bind(quizId,tutorId).first();
+    const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id,quizId=value(form,"quizId"),returnTo=value(form,"returnTo");
+    const quiz=await db.prepare("SELECT q.id,q.scope,q.question_count,(SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id=q.id) questions FROM quizzes q WHERE q.id=? AND q.tutor_id=?").bind(quizId,tutorId).first<{id:string;scope:string;question_count:number;questions:number}>();
     const type=allowed(value(form,"type"),['mcq','fill_blank','drag_drop','order','matching','one_word']as const,'mcq'),prompt=value(form,"prompt").slice(0,4000),answer=value(form,"answer").slice(0,4000);
     const options=value(form,"options").split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,30);
-    if(!quiz||!prompt||!answer||((type==='mcq'||type==='matching'||type==='order'||type==='drag_drop')&&options.length<2))return redirectTo(request,"/dashboard/tutor/quizzes?error=question");
+    const questionReturn=returnTo.startsWith('/dashboard/tutor/')?returnTo:"/dashboard/tutor/quizzes";
+    if(!quiz||quiz.questions>=quiz.question_count||!prompt||!answer||((type==='mcq'||type==='matching'||type==='order'||type==='drag_drop')&&options.length<2))return redirectTo(request,`${questionReturn}${questionReturn.includes('?')?'&':'?'}error=${quiz&&quiz.questions>=quiz.question_count?'question-limit':'question'}`);
     const questionId=createId("qq"),image=form.get("image");let imageKey="",imageName="",imageType="",imageSize=0;
-    if(image instanceof File&&image.size>0){const accepted=['image/png','image/jpeg','image/webp','image/gif'];if(image.size>5*1024*1024||!accepted.includes(image.type))return redirectTo(request,"/dashboard/tutor/quizzes?error=question-image");imageName=image.name.replace(/[^a-zA-Z0-9._-]/g,'_');imageType=image.type;imageSize=image.size;imageKey=`quiz-questions/${quizId}/${questionId}-${imageName}`;await env.FILES.put(imageKey,await image.arrayBuffer(),{httpMetadata:{contentType:imageType}});}
-    await db.prepare("INSERT INTO quiz_questions (id,quiz_id,type,prompt,options_json,answer_json,points,position,image_r2_key,image_file_name,image_content_type,image_size_bytes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(questionId,quizId,type,prompt,JSON.stringify(options),JSON.stringify(answer.trim().toLowerCase()),Math.max(1,Number(value(form,"points"))||10),Math.max(1,Number(value(form,"position"))||1),imageKey,imageName,imageType,imageSize).run();
-    return redirectTo(request,"/dashboard/tutor/quizzes?updated=question");
+    if(image instanceof File&&image.size>0){const accepted=['image/png','image/jpeg','image/webp','image/gif'];if(image.size>5*1024*1024||!accepted.includes(image.type))return redirectTo(request,`${questionReturn}${questionReturn.includes('?')?'&':'?'}error=question-image`);imageName=image.name.replace(/[^a-zA-Z0-9._-]/g,'_');imageType=image.type;imageSize=image.size;imageKey=`quiz-questions/${quizId}/${questionId}-${imageName}`;await env.FILES.put(imageKey,await image.arrayBuffer(),{httpMetadata:{contentType:imageType}});}
+    await db.prepare("INSERT INTO quiz_questions (id,quiz_id,type,prompt,options_json,answer_json,points,position,image_r2_key,image_file_name,image_content_type,image_size_bytes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(questionId,quizId,type,prompt,JSON.stringify(options),JSON.stringify(answer.trim()),Math.max(1,Number(value(form,"points"))||10),quiz.questions+1,imageKey,imageName,imageType,imageSize).run();
+    if(quiz.scope==="standalone"&&quiz.questions+1===quiz.question_count)await db.prepare("UPDATE quizzes SET is_unlocked=1 WHERE id=? AND tutor_id=?").bind(quizId,tutorId).run();
+    return redirectTo(request,`${questionReturn}${questionReturn.includes('?')?'&':'?'}updated=question`);
+  }
+
+  if(action==="assign-quiz"){
+    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});
+    const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id,quizId=value(form,"quizId"),target=allowed(value(form,"target"),["all","student"] as const,"student"),studentId=target==="student"?value(form,"studentId"):null;
+    const quiz=await db.prepare("SELECT q.id,q.question_count,(SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id=q.id) questions FROM quizzes q WHERE q.id=? AND q.tutor_id=? AND q.scope='standalone' AND q.status='published'").bind(quizId,tutorId).first<{id:string;question_count:number;questions:number}>();
+    const student=studentId?await db.prepare("SELECT id FROM users WHERE id=? AND role='student' AND status='active'").bind(studentId).first():null;
+    if(!quiz||quiz.questions!==quiz.question_count||(target==="student"&&!student))return redirectTo(request,`/dashboard/tutor/quizzes?error=${quiz&&quiz.questions!==quiz.question_count?'quiz-incomplete':'assignment'}`);
+    const existing=studentId?await db.prepare("SELECT id FROM quiz_assignments WHERE quiz_id=? AND student_id=? AND status='active'").bind(quizId,studentId).first():await db.prepare("SELECT id FROM quiz_assignments WHERE quiz_id=? AND student_id IS NULL AND status='active'").bind(quizId).first();
+    if(!existing)await db.prepare("INSERT INTO quiz_assignments (id,quiz_id,student_id,assigned_by,status,assigned_at,revoked_at) VALUES (?,?,?,?,'active',?,NULL)").bind(createId("qia"),quizId,studentId,tutorId,new Date().toISOString()).run();
+    await db.prepare("UPDATE quizzes SET is_unlocked=1 WHERE id=? AND tutor_id=?").bind(quizId,tutorId).run();
+    return redirectTo(request,"/dashboard/tutor/quizzes?updated=assigned");
+  }
+
+  if(action==="revoke-quiz"){
+    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});
+    const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id,assignmentId=value(form,"assignmentId"),now=new Date().toISOString();
+    const result=await db.prepare("UPDATE quiz_assignments SET status='revoked',revoked_at=? WHERE id=? AND status='active' AND EXISTS(SELECT 1 FROM quizzes q WHERE q.id=quiz_assignments.quiz_id AND q.tutor_id=? AND q.scope='standalone')").bind(now,assignmentId,tutorId).run();
+    if(!result.meta.changes)return NextResponse.json({error:"Quiz assignment not found"},{status:404});
+    return redirectTo(request,"/dashboard/tutor/quizzes?updated=revoked");
+  }
+
+  if(action==="delete-quiz"){
+    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});
+    const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id,quizId=value(form,"quizId");
+    const quiz=await db.prepare("SELECT id,scope FROM quizzes WHERE id=? AND tutor_id=?").bind(quizId,tutorId).first<{id:string;scope:string}>();
+    if(!quiz)return NextResponse.json({error:"Tutors can delete only quizzes they created"},{status:403});
+    const blobs=await db.prepare("SELECT image_r2_key key FROM quiz_questions WHERE quiz_id=? AND image_r2_key!=''").bind(quizId).all<{key:string}>();
+    await Promise.all(blobs.results.map(item=>env.FILES.delete(item.key)));
+    await db.batch([db.prepare("DELETE FROM quiz_assignments WHERE quiz_id=?").bind(quizId),db.prepare("DELETE FROM quiz_attempts WHERE quiz_id=?").bind(quizId),db.prepare("DELETE FROM quiz_questions WHERE quiz_id=?").bind(quizId),db.prepare("DELETE FROM quizzes WHERE id=? AND tutor_id=?").bind(quizId,tutorId)]);
+    return redirectTo(request,quiz.scope==="standalone"?"/dashboard/tutor/quizzes?deleted=quiz":"/dashboard/tutor/curriculum?deleted=quiz");
   }
 
   if(action==="submit-quiz"){
-    const accessStudent=profile.role==="admin"?"usr_demo_student":profile.id,accessQuiz=value(form,"quizId");const contentAccess=await db.prepare("SELECT q.id FROM quizzes q JOIN courses c ON c.id=q.course_id JOIN enrollments e ON e.course_id=q.course_id LEFT JOIN chapters ch ON ch.id=q.chapter_id WHERE q.id=? AND e.student_id=? AND q.is_unlocked=1 AND c.is_unlocked=1 AND (q.chapter_id IS NULL OR ch.is_unlocked=1)").bind(accessQuiz,accessStudent).first();if(!contentAccess)return NextResponse.json({error:"Quiz is locked"},{status:403});
-    if(profile.role!=="student"&&profile.role!=="admin")return NextResponse.json({error:"Student access required"},{status:403});const studentId=profile.role==="admin"?"usr_demo_student":profile.id,quizId=value(form,"quizId"),returnTo=value(form,"returnTo");const quiz=await db.prepare("SELECT q.id,q.course_id,q.kind,q.attempt_limit FROM quizzes q JOIN enrollments e ON e.course_id=q.course_id WHERE q.id=? AND e.student_id=? AND q.status='published'").bind(quizId,studentId).first<{id:string;course_id:string;kind:string;attempt_limit:number}>();if(!quiz)return NextResponse.json({error:"Quiz unavailable"},{status:404});const attempts=await db.prepare("SELECT COUNT(*) total FROM quiz_attempts WHERE quiz_id=? AND student_id=?").bind(quizId,studentId).first<{total:number}>();if((attempts?.total??0)>=quiz.attempt_limit)return redirectTo(request,returnTo.startsWith("/dashboard/student/curriculum/")?returnTo:"/dashboard/student/quizzes?error=attempt-limit");const questions=await db.prepare("SELECT id,answer_json,points FROM quiz_questions WHERE quiz_id=? ORDER BY position").bind(quizId).all<{id:string;answer_json:string;points:number}>();let score=0,max=0;const answers:Record<string,string>={};for(const q of questions.results){const given=value(form,`answer_${q.id}`).toLowerCase().replace(/\s*\|\s*/g,'|').replace(/\s*=\s*/g,'=');const correct=(JSON.parse(q.answer_json)as string).toLowerCase().replace(/\s*\|\s*/g,'|').replace(/\s*=\s*/g,'=');answers[q.id]=given;max+=q.points;if(given===correct)score+=q.points;}const now=new Date().toISOString();await db.batch([db.prepare("INSERT INTO quiz_attempts (id,quiz_id,student_id,answers_json,score,max_score,submitted_at) VALUES (?,?,?,?,?,?,?)").bind(createId("qat"),quizId,studentId,JSON.stringify(answers),score,max,now),db.prepare("INSERT INTO student_gamification (id,student_id,xp,level,streak_days,updated_at) VALUES (?,?,?,1,1,?) ON CONFLICT(student_id) DO UPDATE SET xp=xp+?,level=MAX(level,CAST((xp+?)/100 AS INTEGER)+1),updated_at=excluded.updated_at").bind(createId("gam"),studentId,score,now,score,score)]);await updateCourseProgress(quiz.course_id,studentId);return redirectTo(request,returnTo.startsWith("/dashboard/student/curriculum/")?returnTo:`/dashboard/student/quizzes?submitted=quiz&score=${score}&max=${max}`);
+    if(profile.role!=="student"&&profile.role!=="admin")return NextResponse.json({error:"Student access required"},{status:403});
+    const studentId=profile.role==="admin"?"usr_demo_student":profile.id,quizId=value(form,"quizId"),returnTo=value(form,"returnTo");
+    const quiz=await db.prepare(`SELECT q.id,q.course_id,q.scope,q.kind,q.attempt_limit,q.question_count
+      FROM quizzes q
+      WHERE q.id=? AND q.status='published' AND q.is_unlocked=1 AND (
+        (q.scope='course' AND EXISTS(SELECT 1 FROM courses c JOIN enrollments e ON e.course_id=c.id LEFT JOIN chapters ch ON ch.id=q.chapter_id WHERE c.id=q.course_id AND e.student_id=? AND c.is_unlocked=1 AND (q.chapter_id IS NULL OR ch.is_unlocked=1)))
+        OR (q.scope='standalone' AND EXISTS(SELECT 1 FROM quiz_assignments a WHERE a.quiz_id=q.id AND a.status='active' AND (a.student_id=? OR a.student_id IS NULL)))
+      )`).bind(quizId,studentId,studentId).first<{id:string;course_id:string|null;scope:string;kind:string;attempt_limit:number;question_count:number}>();
+    if(!quiz)return NextResponse.json({error:"Quiz unavailable"},{status:404});
+    const attempts=await db.prepare("SELECT COUNT(*) total FROM quiz_attempts WHERE quiz_id=? AND student_id=?").bind(quizId,studentId).first<{total:number}>();
+    if((attempts?.total??0)>=quiz.attempt_limit)return redirectTo(request,returnTo.startsWith("/dashboard/student/curriculum/")?returnTo:"/dashboard/student/quizzes?tab=completed&error=attempt-limit");
+    const questions=await db.prepare("SELECT id,answer_json,points FROM quiz_questions WHERE quiz_id=? ORDER BY position").bind(quizId).all<{id:string;answer_json:string;points:number}>();
+    if(questions.results.length!==quiz.question_count)return NextResponse.json({error:"Quiz questions are incomplete"},{status:409});
+    let score=0,max=0;const answers:Record<string,string>={};for(const q of questions.results){const rawGiven=value(form,`answer_${q.id}`),given=rawGiven.toLowerCase().replace(/\s*\|\s*/g,'|').replace(/\s*=\s*/g,'='),correct=(JSON.parse(q.answer_json)as string).toLowerCase().replace(/\s*\|\s*/g,'|').replace(/\s*=\s*/g,'=');answers[q.id]=rawGiven;max+=q.points;if(given===correct)score+=q.points;}
+    const now=new Date().toISOString();await db.batch([db.prepare("INSERT INTO quiz_attempts (id,quiz_id,student_id,answers_json,score,max_score,submitted_at) VALUES (?,?,?,?,?,?,?)").bind(createId("qat"),quizId,studentId,JSON.stringify(answers),score,max,now),db.prepare("INSERT INTO student_gamification (id,student_id,xp,level,streak_days,updated_at) VALUES (?,?,?,1,1,?) ON CONFLICT(student_id) DO UPDATE SET xp=xp+?,level=MAX(level,CAST((xp+?)/100 AS INTEGER)+1),updated_at=excluded.updated_at").bind(createId("gam"),studentId,score,now,score,score)]);
+    if(quiz.course_id)await updateCourseProgress(quiz.course_id,studentId);
+    return redirectTo(request,returnTo.startsWith("/dashboard/student/curriculum/")?returnTo:`/dashboard/student/quizzes?tab=completed&submitted=quiz&score=${score}&max=${max}#quiz-${quizId}`);
   }
 
   if (action === "update-subscription") {
@@ -364,8 +432,7 @@ export async function POST(request: Request) {
     const assigned = await db.prepare("SELECT a.id,a.course_id FROM activities a JOIN courses c ON c.id=a.course_id JOIN enrollments e ON e.course_id=a.course_id LEFT JOIN chapters ch ON ch.id=a.chapter_id WHERE a.id=? AND e.student_id=? AND a.status='published' AND a.is_unlocked=1 AND c.is_unlocked=1 AND (a.chapter_id IS NULL OR ch.is_unlocked=1)").bind(activityId, studentId).first<{id:string;course_id:string}>();
     if (!assigned || (!response&&!files.length)) return NextResponse.json({ error: "Activity not available" }, { status: 404 });
     const now=new Date().toISOString(),newSubmissionId=createId("sub");
-    await db.prepare("INSERT INTO submissions (id, activity_id, student_id, response, submitted_at, feedback, status) VALUES (?, ?, ?, ?, ?, '', 'submitted') ON CONFLICT(activity_id,student_id) DO UPDATE SET response=excluded.response, submitted_at=excluded.submitted_at, status='submitted'").bind(newSubmissionId,activityId,studentId,response,now).run();
-    const submission=await db.prepare("SELECT id FROM submissions WHERE activity_id=? AND student_id=?").bind(activityId,studentId).first<{id:string}>();
+    const submission=await db.prepare("INSERT INTO submissions (id, activity_id, student_id, response, submitted_at, feedback, status) VALUES (?, ?, ?, ?, ?, '', 'submitted') ON CONFLICT(activity_id,student_id) DO UPDATE SET response=excluded.response, submitted_at=excluded.submitted_at, status='submitted' RETURNING id").bind(newSubmissionId,activityId,studentId,response,now).first<{id:string}>();
     if(!submission)return NextResponse.json({error:"Submission could not be saved"},{status:500});
     for(const file of files){const id=createId("sat"),fileName=safeFileName(file),key=`submissions/${submission.id}/${id}-${fileName}`,contentType=safeContentType(file);await env.FILES.put(key,await file.arrayBuffer(),{httpMetadata:{contentType}});await db.prepare("INSERT INTO submission_attachments (id,submission_id,student_id,file_name,content_type,r2_key,size_bytes,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(id,submission.id,studentId,file.name,contentType,key,file.size,now).run();}
     await updateCourseProgress(assigned.course_id,studentId);
