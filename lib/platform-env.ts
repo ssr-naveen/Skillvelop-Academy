@@ -4,7 +4,7 @@ type QueryRow = Record<string, unknown>;
 type FileMetadata = { httpMetadata?: { contentType?: string } };
 
 const numericFields = new Set([
-  "total", "count", "attempts", "best", "classes_taken", "upcoming",
+  "total", "count", "questions", "attempts", "best", "classes_taken", "upcoming",
   "lessons_total", "lessons_done", "quizzes_total", "quizzes_done",
   "activities_total", "activities_done", "average_score", "rating_count",
 ]);
