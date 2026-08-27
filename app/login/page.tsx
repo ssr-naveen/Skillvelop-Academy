@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Poppins } from "next/font/google";
 import Image from "next/image";
-import { ArrowRight, CalendarClock, ClipboardCheck, GraduationCap, LibraryBig, LockKeyhole, Mail, ShieldCheck, TrendingUp } from "lucide-react";
+import { ArrowRight, BookOpen, GraduationCap, Lightbulb, LockKeyhole, Mail, ShieldCheck, TrendingUp, Video } from "lucide-react";
 import styles from "./Login.module.css";
 
 export const dynamic = "force-dynamic";
@@ -80,13 +80,30 @@ function structuredData(origin: string) {
   };
 }
 
-const highlights = [
-  { icon: CalendarClock, title: "Live 1:1 classes", note: "Scheduled sessions with your tutor, shown in your own timezone." },
-  { icon: LibraryBig, title: "Structured curriculum", note: "Courses, chapters and lessons that open up as you progress." },
-  { icon: ClipboardCheck, title: "Practice and assessment", note: "Homework, quizzes and assignments reviewed by your tutor." },
-  { icon: TrendingUp, title: "Measurable progress", note: "Scores, reports and certificates for every milestone reached." },
+const chips = [
+  { icon: Video, label: "Live 1:1 classes" },
+  { icon: BookOpen, label: "Guided curriculum" },
+  { icon: TrendingUp, label: "Tracked progress" },
 ];
 
+const dots = [
+  { left: "7%", bottom: "12%", size: 5, duration: 15, delay: 0 },
+  { left: "19%", bottom: "4%", size: 3, duration: 19, delay: 3 },
+  { left: "28%", bottom: "26%", size: 4, duration: 17, delay: 6 },
+  { left: "38%", bottom: "8%", size: 6, duration: 22, delay: 1.5 },
+  { left: "47%", bottom: "34%", size: 3, duration: 16, delay: 8 },
+  { left: "56%", bottom: "16%", size: 4, duration: 20, delay: 4 },
+  { left: "12%", bottom: "48%", size: 3, duration: 18, delay: 10 },
+  { left: "33%", bottom: "58%", size: 4, duration: 23, delay: 7 },
+  { left: "62%", bottom: "44%", size: 3, duration: 21, delay: 2 },
+  { left: "50%", bottom: "62%", size: 5, duration: 25, delay: 12 },
+];
+
+const glyphs = [
+  { icon: GraduationCap, left: "9%", top: "22%", size: 46, duration: 13, delay: 0 },
+  { icon: BookOpen, left: "44%", top: "68%", size: 38, duration: 16, delay: 2.5 },
+  { icon: Lightbulb, left: "31%", top: "12%", size: 32, duration: 15, delay: 5 },
+];
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string; returnTo?: string }> }) {
   const params = await searchParams;
   const user = await getChatGPTUser();
@@ -97,38 +114,36 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return <main className={`${poppins.variable} ${styles.page}`}>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData(origin)).replace(/</g, "\\u003c") }}/>
 
+    <div className={styles.scene} aria-hidden="true"/>
+    <div className={styles.particles} aria-hidden="true">
+      {dots.map((dot, index) => <span key={index} className={styles.dot} style={{ left: dot.left, bottom: dot.bottom, width: dot.size, height: dot.size, animationDuration: `${dot.duration}s`, animationDelay: `${dot.delay}s` }}/>)}
+      {glyphs.map(({ icon: Icon, left, top, size, duration, delay }, index) => <span key={index} className={styles.glyph} style={{ left, top, animationDuration: `${duration}s`, animationDelay: `${delay}s` }}><Icon size={size} strokeWidth={1}/></span>)}
+    </div>
+
     <header className={styles.topbar}>
       <a className={styles.brand} href="/" aria-label="Skillvelop Academy home">
-        <span className={styles.brandMark}><Image src="/skillvelop-logo.png" alt="Skillvelop Academy" width={133} height={74} priority unoptimized/></span>
+        <span className={styles.brandMark}><Image src="/skillvelop-logo.png" alt="Skillvelop Academy" width={127} height={71} priority unoptimized/></span>
         <span className={styles.brandNote}><strong>Skillvelop Academy</strong>Learning management system</span>
       </a>
       <span className={styles.securePill}><ShieldCheck size={15}/><span>Secure, role-based access</span></span>
     </header>
 
-    <section className={styles.shell}>
-      <div className={styles.story}>
-        <div>
-          <span className={styles.eyebrow}><GraduationCap/> Learning workspace</span>
-          <h1>One place for every class, task and <em>milestone</em>.</h1>
-          <p className={styles.storyLead}>Skillvelop Academy keeps live teaching, curriculum, practice and feedback together, so every learner always knows exactly what to do next.</p>
+    <section className={styles.stage}>
+      <div className={styles.intro}>
+        <span className={styles.eyebrow}><span className={styles.live}/> Live 1:1 learning</span>
+        <h1>Your next class is <em>ready</em> when you are.</h1>
+        <p className={styles.lead}>Live teaching, coursework and feedback in one workspace.</p>
+        <div className={styles.chips}>
+          {chips.map(({ icon: Icon, label }) => <span className={styles.chip} key={label}><Icon size={15}/>{label}</span>)}
         </div>
-
-        <div className={styles.valueList}>
-          {highlights.map(({ icon: Icon, title, note }) => <div className={styles.valueItem} key={title}>
-            <span className={styles.valueIcon}><Icon size={18}/></span>
-            <div><strong>{title}</strong><span>{note}</span></div>
-          </div>)}
-        </div>
-
-        <div className={styles.roles}><b>Built for</b><span>Administrators</span><span>Tutors</span><span>Students</span></div>
       </div>
 
-      <div className={styles.panel}>
-        <span className={styles.panelKicker}>Welcome back</span>
-        <h2>{user ? `Continue as ${user.displayName}` : "Sign in to your workspace"}</h2>
-        <p className={styles.panelIntro}>{user ? "You are already signed in. Continue securely to your Skillvelop dashboard." : "Enter the username or email issued by your academy administrator to open your classes, courses and assigned work."}</p>
+      <div className={styles.card}>
+        <span className={styles.cardKicker}>Welcome back</span>
+        <h2>{user ? `Continue as ${user.displayName}` : "Sign in to Skillvelop"}</h2>
+        <p className={styles.cardIntro}>{user ? "Your workspace is ready. Continue securely to your dashboard." : "Use the account your academy administrator issued you."}</p>
 
-        {params.error && <div className={styles.error} role="alert"><LockKeyhole size={15}/> The username or password is incorrect. Please try again.</div>}
+        {params.error && <div className={styles.error} role="alert"><LockKeyhole size={15}/> The username or password is incorrect.</div>}
 
         {user ? <div className={styles.continueCard}>
           <div className={styles.welcomeIdentity}>
@@ -153,14 +168,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <button className={styles.button} type="submit"><span>Sign in securely</span><span className={styles.buttonArrow}><ArrowRight size={18}/></span></button>
         </form>}
 
-        <p className={styles.support}>Skillvelop accounts are created by your academy administrator. Need access or help signing in? <a href={`mailto:${supportEmail}`}>Contact support</a>.</p>
-        <p className={styles.terms}>Sessions are encrypted and role protected. By continuing you agree to Skillvelop&apos;s learning platform terms and privacy policy.</p>
+        <p className={styles.support}>Accounts are created by your administrator. <a href={`mailto:${supportEmail}`}>Need help?</a></p>
       </div>
     </section>
 
     <footer className={styles.footer}>
       <span>© {new Date().getFullYear()} Skillvelop Academy</span>
-      <span className={styles.footerTrust}><ShieldCheck size={13}/> Encrypted, role-based access</span>
+      <span className={styles.footerTrust}><ShieldCheck size={12}/> Encrypted, role-based access</span>
       <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
     </footer>
   </main>;

@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" fill="none" role="img" aria-label="Illustration of a live one to one online class between a tutor and a student">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3d818b"/><stop offset="1" stop-color="#445573"/></linearGradient>
+    <linearGradient id="tileB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8e5b83"/><stop offset="1" stop-color="#445573"/></linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#d987c5"/><stop offset="1" stop-color="#ff7168"/></linearGradient>
+    <filter id="soft" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="34"/></filter>
+  </defs>
+
+  <g filter="url(#soft)" opacity=".55">
+    <circle cx="1180" cy="150" r="90" fill="#d987c5" opacity=".26"/>
+    <circle cx="1470" cy="470" r="105" fill="#ff7168" opacity=".2"/>
+    <circle cx="820" cy="760" r="80" fill="#7fd3c8" opacity=".18"/>
+    <circle cx="300" cy="250" r="70" fill="#8fb9c4" opacity=".1"/>
+    <circle cx="180" cy="700" r="60" fill="#d987c5" opacity=".08"/>
+  </g>
+
+  <!-- live class window -->
+  <g>
+    <rect x="656" y="178" width="648" height="472" rx="30" fill="#ffffff" fill-opacity=".07" stroke="#ffffff" stroke-opacity=".14"/>
+    <circle cx="694" cy="216" r="5.5" fill="#ffffff" fill-opacity=".3"/>
+    <circle cx="713" cy="216" r="5.5" fill="#ffffff" fill-opacity=".18"/>
+    <circle cx="732" cy="216" r="5.5" fill="#ffffff" fill-opacity=".18"/>
+    <rect x="1186" y="203" width="82" height="26" rx="13" fill="#ff7168" fill-opacity=".24" stroke="#ff7168" stroke-opacity=".5"/>
+    <circle cx="1205" cy="216" r="5" fill="#ff7168"/>
+    <rect x="1218" y="211" width="36" height="10" rx="5" fill="#ffd2cc" fill-opacity=".75"/>
+
+    <rect x="688" y="252" width="366" height="284" rx="22" fill="url(#tile)" fill-opacity=".7"/>
+    <circle cx="871" cy="368" r="46" fill="#ffffff" fill-opacity=".22"/>
+    <path d="M786 536c0-47 38-85 85-85s85 38 85 85z" fill="#ffffff" fill-opacity=".2"/>
+    <rect x="708" y="496" width="96" height="20" rx="10" fill="#0d2228" fill-opacity=".5"/>
+    <rect x="719" y="503" width="58" height="6" rx="3" fill="#ffffff" fill-opacity=".6"/>
+
+    <rect x="1074" y="252" width="198" height="152" rx="18" fill="url(#tileB)" fill-opacity=".62"/>
+    <circle cx="1173" cy="318" r="28" fill="#ffffff" fill-opacity=".22"/>
+    <path d="M1122 404c0-28 23-51 51-51s51 23 51 51z" fill="#ffffff" fill-opacity=".19"/>
+
+    <rect x="1074" y="420" width="198" height="116" rx="18" fill="#ffffff" fill-opacity=".08" stroke="#ffffff" stroke-opacity=".11"/>
+    <rect x="1096" y="442" width="88" height="7" rx="3.5" fill="#ffffff" fill-opacity=".36"/>
+    <rect x="1096" y="459" width="126" height="7" rx="3.5" fill="#ffffff" fill-opacity=".2"/>
+    <polyline points="1096,516 1131,498 1163,507 1197,478 1240,488" stroke="url(#brand)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="1240" cy="488" r="5.5" fill="#ff7168"/>
+
+    <rect x="838" y="568" width="284" height="56" rx="28" fill="#0b1e24" fill-opacity=".5" stroke="#ffffff" stroke-opacity=".09"/>
+    <circle cx="890" cy="596" r="17" fill="#ffffff" fill-opacity=".14"/>
+    <rect x="884" y="587" width="11" height="15" rx="5.5" fill="#ffffff" fill-opacity=".6"/>
+    <circle cx="946" cy="596" r="17" fill="#ffffff" fill-opacity=".14"/>
+    <rect x="937" y="589" width="14" height="13" rx="3" fill="#ffffff" fill-opacity=".6"/>
+    <path d="M954 591l9-4v17l-9-4z" fill="#ffffff" fill-opacity=".6"/>
+    <circle cx="1002" cy="596" r="17" fill="#ffffff" fill-opacity=".14"/>
+    <path d="M994 599c5-6 12-6 17 0" stroke="#ffffff" stroke-opacity=".6" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="1066" cy="596" r="19" fill="#ff7168" fill-opacity=".8"/>
+    <path d="M1057 599c6-5 12-5 18 0" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- graduation cap -->
+  <g opacity=".4" transform="translate(1352 128) rotate(-8)">
+    <path d="M0 28L62 0l62 28-62 28z" fill="#ffffff" fill-opacity=".34"/>
+    <path d="M26 41v28c0 11 16 19 36 19s36-8 36-19V41" stroke="#ffffff" stroke-opacity=".32" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M120 30v36" stroke="#ff9d90" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="120" cy="72" r="6" fill="#ff9d90"/>
+  </g>
+
+  <!-- pencil -->
+  <g opacity=".34" transform="translate(1332 636) rotate(36)">
+    <rect x="0" y="0" width="15" height="102" rx="5" fill="#ffffff" fill-opacity=".24"/>
+    <path d="M0 102l7.5 24 7.5-24z" fill="#ff9d90" fill-opacity=".85"/>
+  </g>
+</svg>
