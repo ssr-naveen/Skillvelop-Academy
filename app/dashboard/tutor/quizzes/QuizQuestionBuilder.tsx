@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Braces, CheckCircle2, ImagePlus, ListOrdered, Plus, Rows3, Shuffle, Sparkles, Trash2, Type } from "lucide-react";
+import { Braces, CheckCircle2, Code2, FileImage, FileText, ListOrdered, Paperclip, Plus, Presentation, Rows3, Shuffle, Sparkles, Trash2, Type, X } from "lucide-react";
 import { MathComposer } from "../../MathComposer";
 
 type QuestionType = "mcq" | "fill_blank" | "one_word" | "drag_drop" | "order" | "matching";
+type ResourceType = "none" | "image" | "pdf" | "document" | "presentation" | "iframe";
 const typeOptions: { value: QuestionType; label: string; hint: string; icon: typeof CheckCircle2 }[] = [
   { value: "mcq", label: "Multiple choice", hint: "Options with one correct answer", icon: CheckCircle2 },
   { value: "fill_blank", label: "Fill in the blank", hint: "Sentence with a missing answer", icon: Type },
@@ -13,6 +14,20 @@ const typeOptions: { value: QuestionType; label: string; hint: string; icon: typ
   { value: "order", label: "Correct order", hint: "Arrange steps in sequence", icon: ListOrdered },
   { value: "drag_drop", label: "Drag & drop", hint: "Move items into the right order", icon: Rows3 },
 ];
+const resourceOptions: { value: ResourceType; label: string; hint: string; icon: typeof Paperclip }[] = [
+  { value: "none", label: "None", hint: "Question only", icon: X },
+  { value: "image", label: "Image", hint: "Diagram or visual", icon: FileImage },
+  { value: "pdf", label: "PDF", hint: "Inline reading", icon: FileText },
+  { value: "document", label: "Document", hint: "DOC, DOCX, ODT", icon: Paperclip },
+  { value: "presentation", label: "Slides", hint: "PPT, PPTX, ODP", icon: Presentation },
+  { value: "iframe", label: "Embed", hint: "Secure HTTPS URL", icon: Code2 },
+];
+const resourceAccept: Record<Exclude<ResourceType, "none" | "iframe">, string> = {
+  image: ".png,.jpg,.jpeg,.webp,.gif,image/png,image/jpeg,image/webp,image/gif",
+  pdf: ".pdf,application/pdf",
+  document: ".doc,.docx,.odt,.rtf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,application/rtf",
+  presentation: ".ppt,.pptx,.odp,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.oasis.opendocument.presentation",
+};
 export default function QuizQuestionBuilder({ quizId, nextPosition, targetCount, returnTo="/dashboard/tutor/quizzes" }: { quizId: string; nextPosition: number; targetCount: number; returnTo?: string }) {
   const [type, setType] = useState<QuestionType>("mcq");
   const [prompt, setPrompt] = useState("");
@@ -20,6 +35,8 @@ export default function QuizQuestionBuilder({ quizId, nextPosition, targetCount,
   const [pairs, setPairs] = useState([["", ""], ["", ""], ["", ""]]);
   const [answer, setAnswer] = useState("");
   const [correctIndex, setCorrectIndex] = useState(-1);
+  const [resourceType, setResourceType] = useState<ResourceType>("none");
+  const [resourceName, setResourceName] = useState("");
 
   const serialized = useMemo(() => {
     if (type === "matching") return pairs.filter(([left, right]) => left.trim() && right.trim()).map(([left, right]) => `${left.trim()}::${right.trim()}`);
@@ -42,6 +59,7 @@ export default function QuizQuestionBuilder({ quizId, nextPosition, targetCount,
     <input type="hidden" name="type" value={type} />
     <input type="hidden" name="options" value={serialized.join("\n")} />
     <input type="hidden" name="answer" value={correctAnswer} />
+    <input type="hidden" name="resourceType" value={resourceType} />
 
     <section className="builder-section">
       <div className="builder-section-head"><span>1</span><div><h4>Choose the interaction</h4><p>Each question type has fields designed for that activity.</p></div></div>
@@ -49,9 +67,14 @@ export default function QuizQuestionBuilder({ quizId, nextPosition, targetCount,
     </section>
 
     <section className="builder-section">
-      <div className="builder-section-head"><span>2</span><div><h4>Write the question</h4><p>Add maths, instructions, and an optional visual.</p></div></div>
+      <div className="builder-section-head"><span>2</span><div><h4>Write the question</h4><p>Add maths, instructions, and one optional learning resource.</p></div></div>
       <input type="hidden" name="prompt" value={prompt}/><MathComposer value={prompt} onChange={setPrompt} label="Question prompt" multiline required placeholder={type === "fill_blank" ? "Example: The value of a fraction expression is ___." : "What should the learner solve or identify?"}/>
-      <label className="image-upload"><ImagePlus size={22} /><span><strong>Add a question image</strong><small>PNG, JPG, WebP or GIF · up to 5 MB</small></span><input name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" /></label>
+      <fieldset className="quiz-resource-builder">
+        <legend>Question resource <small>Optional · one resource per question</small></legend>
+        <div className="quiz-resource-options">{resourceOptions.map(item => { const Icon = item.icon; return <button className={resourceType === item.value ? "active" : ""} type="button" aria-pressed={resourceType === item.value} onClick={() => { setResourceType(item.value); setResourceName(""); }} key={item.value}><Icon size={18}/><span><strong>{item.label}</strong><small>{item.hint}</small></span></button>; })}</div>
+        {resourceType !== "none" && resourceType !== "iframe" ? <label className="quiz-resource-upload"><span><Paperclip size={20}/><span><strong>{resourceName || `Choose ${resourceOptions.find(item => item.value === resourceType)?.label.toLowerCase()} file`}</strong><small>{resourceType === "image" ? "PNG, JPG, WebP or GIF" : resourceType === "pdf" ? "PDF document" : resourceType === "document" ? "DOC, DOCX, ODT or RTF" : "PPT, PPTX or ODP"} · up to 4 MB</small></span></span><input name="resourceFile" type="file" accept={resourceAccept[resourceType]} required onChange={event => setResourceName(event.target.files?.[0]?.name ?? "")}/></label> : null}
+        {resourceType === "iframe" ? <label className="quiz-embed-field">Secure embed URL<input name="embedUrl" type="url" inputMode="url" required placeholder="https://learning-tool.example/embed/..."/><small>Use an HTTPS embed URL from a trusted learning provider. The provider must allow iframe embedding.</small></label> : null}
+      </fieldset>
     </section>
 
     <section className="builder-section">

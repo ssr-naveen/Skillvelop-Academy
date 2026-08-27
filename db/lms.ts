@@ -21,9 +21,8 @@ const schema = [
   `CREATE TABLE IF NOT EXISTS lesson_progress (id TEXT PRIMARY KEY, lesson_id TEXT NOT NULL REFERENCES lessons(id), student_id TEXT NOT NULL REFERENCES users(id), completed_at TEXT NOT NULL, UNIQUE(lesson_id, student_id))`,
   `CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, course_id TEXT NOT NULL REFERENCES courses(id), sender_id TEXT NOT NULL REFERENCES users(id), recipient_id TEXT NOT NULL REFERENCES users(id), body TEXT NOT NULL, created_at TEXT NOT NULL, read_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS user_profiles (id TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE REFERENCES users(id), phone TEXT NOT NULL DEFAULT '', timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata', bio TEXT NOT NULL DEFAULT '', preferred_language TEXT NOT NULL DEFAULT 'English', headline TEXT NOT NULL DEFAULT '', qualifications TEXT NOT NULL DEFAULT '', experience_years INTEGER NOT NULL DEFAULT 0, specialties TEXT NOT NULL DEFAULT '', achievements TEXT NOT NULL DEFAULT '', teaching_philosophy TEXT NOT NULL DEFAULT '', location TEXT NOT NULL DEFAULT '', languages TEXT NOT NULL DEFAULT '', linkedin_url TEXT NOT NULL DEFAULT '', website_url TEXT NOT NULL DEFAULT '', avatar_r2_key TEXT NOT NULL DEFAULT '', avatar_content_type TEXT NOT NULL DEFAULT '', avatar_file_name TEXT NOT NULL DEFAULT '', is_public INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS curriculum_templates (id TEXT PRIMARY KEY, title TEXT NOT NULL, subject TEXT NOT NULL, level TEXT NOT NULL, description TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'published', created_by TEXT NOT NULL REFERENCES users(id), created_at TEXT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS curriculum_template_lessons (id TEXT PRIMARY KEY, template_id TEXT NOT NULL REFERENCES curriculum_templates(id), title TEXT NOT NULL, summary TEXT NOT NULL, content TEXT NOT NULL, position INTEGER NOT NULL DEFAULT 1, duration_minutes INTEGER NOT NULL DEFAULT 30, created_at TEXT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS curriculum_imports (id TEXT PRIMARY KEY, template_id TEXT NOT NULL REFERENCES curriculum_templates(id), course_id TEXT NOT NULL REFERENCES courses(id), tutor_id TEXT NOT NULL REFERENCES users(id), imported_at TEXT NOT NULL, UNIQUE(template_id, course_id))`,
+  `CREATE TABLE IF NOT EXISTS curricula (id TEXT PRIMARY KEY,name TEXT NOT NULL UNIQUE,audience TEXT NOT NULL DEFAULT 'school',category TEXT NOT NULL DEFAULT '',description TEXT NOT NULL DEFAULT '',status TEXT NOT NULL DEFAULT 'active',created_by TEXT NOT NULL REFERENCES users(id),created_at TEXT NOT NULL,updated_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS curriculum_subjects (id TEXT PRIMARY KEY,curriculum_id TEXT NOT NULL REFERENCES curricula(id),name TEXT NOT NULL,grades_json TEXT NOT NULL DEFAULT '[]',status TEXT NOT NULL DEFAULT 'active',created_at TEXT NOT NULL,UNIQUE(curriculum_id,name))`,
   `CREATE TABLE IF NOT EXISTS student_gamification (id TEXT PRIMARY KEY, student_id TEXT NOT NULL UNIQUE REFERENCES users(id), xp INTEGER NOT NULL DEFAULT 0, level INTEGER NOT NULL DEFAULT 1, streak_days INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS badges (id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT NOT NULL, icon TEXT NOT NULL, xp_required INTEGER NOT NULL DEFAULT 0)`,
   `CREATE TABLE IF NOT EXISTS student_badges (id TEXT PRIMARY KEY, student_id TEXT NOT NULL REFERENCES users(id), badge_id TEXT NOT NULL REFERENCES badges(id), awarded_at TEXT NOT NULL, UNIQUE(student_id,badge_id))`,
@@ -32,7 +31,7 @@ const schema = [
   `CREATE TABLE IF NOT EXISTS lesson_notes (id TEXT PRIMARY KEY, lesson_id TEXT NOT NULL REFERENCES lessons(id), student_id TEXT NOT NULL REFERENCES users(id), body TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL, UNIQUE(lesson_id,student_id))`,
   `CREATE TABLE IF NOT EXISTS submission_attachments (id TEXT PRIMARY KEY, submission_id TEXT NOT NULL REFERENCES submissions(id), student_id TEXT NOT NULL REFERENCES users(id), file_name TEXT NOT NULL, content_type TEXT NOT NULL, r2_key TEXT NOT NULL, size_bytes INTEGER NOT NULL, created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS quizzes (id TEXT PRIMARY KEY, course_id TEXT REFERENCES courses(id), chapter_id TEXT REFERENCES chapters(id), tutor_id TEXT NOT NULL REFERENCES users(id), title TEXT NOT NULL, description TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'quiz', attempt_limit INTEGER NOT NULL DEFAULT 1, is_unlocked INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'published', scope TEXT NOT NULL DEFAULT 'course', question_count INTEGER NOT NULL DEFAULT 5, passing_percentage INTEGER NOT NULL DEFAULT 60, created_at TEXT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS quiz_questions (id TEXT PRIMARY KEY, quiz_id TEXT NOT NULL REFERENCES quizzes(id), type TEXT NOT NULL, prompt TEXT NOT NULL, options_json TEXT NOT NULL DEFAULT '[]', answer_json TEXT NOT NULL, points INTEGER NOT NULL DEFAULT 1, position INTEGER NOT NULL DEFAULT 1, image_r2_key TEXT NOT NULL DEFAULT '', image_file_name TEXT NOT NULL DEFAULT '', image_content_type TEXT NOT NULL DEFAULT '', image_size_bytes INTEGER NOT NULL DEFAULT 0)`,
+  `CREATE TABLE IF NOT EXISTS quiz_questions (id TEXT PRIMARY KEY, quiz_id TEXT NOT NULL REFERENCES quizzes(id), type TEXT NOT NULL, prompt TEXT NOT NULL, options_json TEXT NOT NULL DEFAULT '[]', answer_json TEXT NOT NULL, points INTEGER NOT NULL DEFAULT 1, position INTEGER NOT NULL DEFAULT 1, image_r2_key TEXT NOT NULL DEFAULT '', image_file_name TEXT NOT NULL DEFAULT '', image_content_type TEXT NOT NULL DEFAULT '', image_size_bytes INTEGER NOT NULL DEFAULT 0, resource_type TEXT NOT NULL DEFAULT 'none', resource_embed_url TEXT NOT NULL DEFAULT '')`,
   `CREATE TABLE IF NOT EXISTS quiz_attempts (id TEXT PRIMARY KEY, quiz_id TEXT NOT NULL REFERENCES quizzes(id), student_id TEXT NOT NULL REFERENCES users(id), answers_json TEXT NOT NULL, score INTEGER NOT NULL, max_score INTEGER NOT NULL, submitted_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS quiz_assignments (id TEXT PRIMARY KEY, quiz_id TEXT NOT NULL REFERENCES quizzes(id), student_id TEXT REFERENCES users(id), assigned_by TEXT NOT NULL REFERENCES users(id), status TEXT NOT NULL DEFAULT 'active', assigned_at TEXT NOT NULL, revoked_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS ai_settings (id TEXT PRIMARY KEY, provider TEXT NOT NULL DEFAULT 'openai', model TEXT NOT NULL DEFAULT 'gpt-5-mini', enabled INTEGER NOT NULL DEFAULT 0, system_guidance TEXT NOT NULL DEFAULT '', updated_by TEXT NOT NULL REFERENCES users(id), updated_at TEXT NOT NULL)`,
@@ -55,9 +54,8 @@ const schema = [
   `CREATE INDEX IF NOT EXISTS idx_lesson_progress_student ON lesson_progress(student_id, lesson_id)`,
   `CREATE INDEX IF NOT EXISTS idx_messages_participants_created ON messages(sender_id, recipient_id, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_messages_course_created ON messages(course_id, created_at)`,
-  `CREATE INDEX IF NOT EXISTS idx_template_lessons_template_position ON curriculum_template_lessons(template_id, position)`,
-  `CREATE INDEX IF NOT EXISTS idx_curriculum_templates_subject_level ON curriculum_templates(subject, level, status)`,
-  `CREATE INDEX IF NOT EXISTS idx_curriculum_imports_tutor_course ON curriculum_imports(tutor_id, course_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_curricula_status_name ON curricula(status,name)`,
+  `CREATE INDEX IF NOT EXISTS idx_curriculum_subjects_curriculum ON curriculum_subjects(curriculum_id,status,name)`,
   `CREATE INDEX IF NOT EXISTS idx_gamification_xp ON student_gamification(xp)`,
   `CREATE INDEX IF NOT EXISTS idx_certificates_student ON certificates(student_id,issued_at)`,
   `CREATE INDEX IF NOT EXISTS idx_resources_lesson ON lesson_resources(lesson_id,created_at)`,
@@ -115,7 +113,6 @@ export async function ensureProfile(user: ChatGPTUser): Promise<UserProfile> {
   await seedLearningContent();
   await ensureCourseStructure();
   await seedCompleteMathCourse();
-  await seedCurriculumLibrary();
   await seedGamification();
   if (profile.role === "student") await enrollStudent(profile.id);
   return profile;
@@ -185,15 +182,6 @@ async function seedCompleteMathCourse(){
     db.prepare("INSERT OR IGNORE INTO lesson_progress (id,lesson_id,student_id,completed_at) VALUES ('lpr_demo_math_2','les_demo_solving',?,?)").bind(studentId,now),
     db.prepare("INSERT OR IGNORE INTO quiz_attempts (id,quiz_id,student_id,answers_json,score,max_score,submitted_at) VALUES ('qat_demo_math_1','qiz_math_c1_practice',?,'{}',10,10,?)").bind(studentId,now),
     db.prepare("INSERT OR IGNORE INTO submissions (id,activity_id,student_id,response,submitted_at,score,feedback,status) VALUES ('sub_demo_math_1','act_math_c1_assignment',?,'Completed workbook link',?,92,'Excellent step-by-step working.','reviewed')").bind(studentId,now),
-  ]);
-}
-
-async function seedCurriculumLibrary() {
-  const db=database(); const admin=await db.prepare("SELECT id FROM users WHERE role='admin' ORDER BY created_at LIMIT 1").first<{id:string}>(); if(!admin)return; const now=new Date().toISOString();
-  await db.batch([
-    db.prepare("INSERT OR IGNORE INTO curriculum_templates (id,title,subject,level,description,status,created_by,created_at) VALUES ('tpl_math_foundations','Mathematics Foundations','Mathematics','Grades 7–9','A reusable sequence covering algebra foundations, linear equations and guided practice.','published',?,?)").bind(admin.id,now),
-    db.prepare("INSERT OR IGNORE INTO curriculum_template_lessons (id,template_id,title,summary,content,position,duration_minutes,created_at) VALUES ('tplles_variables','tpl_math_foundations','Variables and expressions','Understand variables, constants, terms and coefficients.','A variable represents an unknown or changing value. Identify each part of an expression, combine like terms, and translate short word statements into algebraic expressions.',1,25,?)").bind(now),
-    db.prepare("INSERT OR IGNORE INTO curriculum_template_lessons (id,template_id,title,summary,content,position,duration_minutes,created_at) VALUES ('tplles_linear','tpl_math_foundations','Linear equations','Solve one-step and multi-step linear equations.','Keep an equation balanced by applying the same operation to both sides. Simplify, isolate the variable, and substitute the result back into the original equation to check it.',2,35,?)").bind(now),
   ]);
 }
 

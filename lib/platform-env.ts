@@ -13,7 +13,8 @@ const applicationTables = [
   "users", "courses", "chapters", "enrollments", "live_classes", "activities",
   "submissions", "announcements", "manager_permissions", "student_subscriptions",
   "subscription_renewals", "lessons", "lesson_progress", "messages", "user_profiles",
-  "curriculum_templates", "curriculum_template_lessons", "curriculum_imports",
+  "curricula", "curriculum_subjects", "assessment_reset_requests", "staff_course_enrollments",
+  "staff_certificates", "tutor_availability_slots", "demo_bookings", "chat_moderation_alerts",
   "student_gamification", "badges", "student_badges", "certificates", "lesson_resources",
   "lesson_notes", "submission_attachments", "quizzes", "quiz_questions", "quiz_attempts",
   "ai_settings", "ai_threads", "ai_messages", "ai_provider_credentials", "file_objects",
@@ -95,9 +96,6 @@ function isRetiredDemoSeed(source: string, bindings: unknown[]): boolean {
   const retiredCourseIds = ["crs_math_mastery", "crs_english_confidence"];
   if (/\bINTO\s+users\b/i.test(source) && ["usr_demo_tutor", "usr_demo_student"].some((id) => values.has(id))) return true;
   if (retiredCourseIds.some((id) => values.has(id) || source.includes(id))) return true;
-  if (/\bINTO\s+curriculum_templates\b/i.test(source) && source.includes("tpl_math_foundations")) return true;
-  if (/\bINTO\s+curriculum_template_lessons\b/i.test(source) &&
-      (source.includes("tplles_variables") || source.includes("tplles_linear"))) return true;
   return false;
 }
 

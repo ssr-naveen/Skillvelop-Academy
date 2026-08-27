@@ -3,15 +3,19 @@ import { LmsShell, Notice, Status } from "../../components";
 import DeleteButton from "../../DeleteButton";
 import { requireRole } from "../../auth";
 import QuizQuestionBuilder from "./QuizQuestionBuilder";
+import MathText from "../../MathText";
 
 type Student={id:string;name:string};
 type Quiz={id:string;title:string;description:string;question_count:number;questions:number;attempts:number;assignments:number;is_unlocked:number};
 type Assignment={id:string;quiz_id:string;student_id:string|null;student:string|null;assigned_at:string};
+type Attempt={id:string;quiz_id:string;quiz:string;scope:string;kind:string;student_id:string;student:string;answers_json:string;score:number;max_score:number;submitted_at:string};
+type ReviewQuestion={id:string;quiz_id:string;prompt:string;answer_json:string;position:number};
+type ResetRequest={id:string;quiz_id:string;quiz:string;learner_id:string;student:string;reason:string;requested_at:string};
 export const dynamic="force-dynamic";
 
 export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
   const profile=await requireRole("tutor","/dashboard/tutor/quizzes"),tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id;
-  const [students,quizzes,assignments]=await Promise.all([
+  const [students,quizzes,assignments,attempts,reviewQuestions,resetRequests]=await Promise.all([
     all<Student>("SELECT id,name FROM users WHERE role='student' AND status='active' ORDER BY name"),
     all<Quiz>(`SELECT q.id,q.title,q.description,q.question_count,q.is_unlocked,COUNT(DISTINCT qq.id) questions,COUNT(DISTINCT qa.id) attempts,COUNT(DISTINCT qas.id) assignments
       FROM quizzes q LEFT JOIN quiz_questions qq ON qq.quiz_id=q.id LEFT JOIN quiz_attempts qa ON qa.quiz_id=q.id
@@ -19,6 +23,9 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
       WHERE q.tutor_id=? AND q.scope='standalone' AND q.status='published'
       GROUP BY q.id ORDER BY q.created_at DESC`,tutorId),
     all<Assignment>(`SELECT a.id,a.quiz_id,a.student_id,u.name student,a.assigned_at FROM quiz_assignments a JOIN quizzes q ON q.id=a.quiz_id LEFT JOIN users u ON u.id=a.student_id WHERE q.tutor_id=? AND q.scope='standalone' AND a.status='active' ORDER BY a.assigned_at DESC`,tutorId),
+    all<Attempt>(`SELECT qa.id,qa.quiz_id,q.title quiz,q.scope,q.kind,qa.student_id,u.name student,qa.answers_json,qa.score,qa.max_score,qa.submitted_at FROM quiz_attempts qa JOIN quizzes q ON q.id=qa.quiz_id JOIN users u ON u.id=qa.student_id WHERE q.tutor_id=? ORDER BY qa.submitted_at DESC LIMIT 100`,tutorId),
+    all<ReviewQuestion>(`SELECT qq.id,qq.quiz_id,qq.prompt,qq.answer_json,qq.position FROM quiz_questions qq JOIN quizzes q ON q.id=qq.quiz_id WHERE q.tutor_id=? ORDER BY qq.quiz_id,qq.position`,tutorId),
+    all<ResetRequest>(`SELECT r.id,r.quiz_id,q.title quiz,r.learner_id,u.name student,r.reason,r.requested_at FROM assessment_reset_requests r JOIN quizzes q ON q.id=r.quiz_id JOIN users u ON u.id=r.learner_id WHERE q.tutor_id=? AND r.status='pending' ORDER BY r.requested_at`,tutorId),
   ]);
   return <LmsShell profile={profile} activeRole="tutor" activePath="/dashboard/tutor/quizzes" eyebrow="Independent learner checks" title="Standalone quizzes" subtitle="Create named quizzes outside courses, choose an exact question count, and assign each quiz to one learner or everyone.">
     <Notice params={await searchParams}/>
@@ -35,5 +42,7 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
       </section>
       <aside className="form-card sticky-builder quiz-setup-card"><form action="/api/lms" method="post"><input type="hidden" name="action" value="create-quiz"/><input type="hidden" name="scope" value="standalone"/><span className="panel-kicker">NEW STANDALONE QUIZ</span><h2>Create a named quiz</h2><p>It remains unassigned until every required question has been added.</p><label>Quiz name<input name="title" required maxLength={180} placeholder="Fractions speed check"/></label><label>Student instructions<textarea name="description" rows={4} required placeholder="Explain what this quiz checks and how to complete it."/></label><label>Number of questions<select name="questionCount" defaultValue="5"><option value="5">5 questions</option><option value="10">10 questions</option><option value="15">15 questions</option><option value="20">20 questions</option><option value="25">25 questions</option></select></label><button>Create quiz & add questions →</button></form></aside>
     </div>
+    {resetRequests.length?<section className="panel assessment-reset-panel"><div className="panel-head"><div><span className="panel-kicker">RE-ATTEMPT REQUESTS</span><h2>Final assessment approvals</h2></div><Status tone="amber">{resetRequests.length} pending</Status></div><div>{resetRequests.map(request=><article key={request.id}><div><strong>{request.student}</strong><span>{request.quiz}</span><p>{request.reason}</p><small>Requested {new Intl.DateTimeFormat("en-IN",{dateStyle:"medium",timeStyle:"short"}).format(new Date(request.requested_at))}</small></div><form action="/api/lms" method="post"><input type="hidden" name="action" value="approve-assessment-reset"/><input type="hidden" name="requestId" value={request.id}/><input type="hidden" name="quizId" value={request.quiz_id}/><input type="hidden" name="learnerId" value={request.learner_id}/><button>Approve re-attempt</button></form></article>)}</div></section>:null}
+    <section className="panel quiz-results-review"><div className="panel-head"><div><span className="panel-kicker">STUDENT-WISE REVIEW</span><h2>Quiz & assessment results</h2><p>Course checks remain inside their courses; this consolidated view is for reviewing learner answers.</p></div><Status>{attempts.length} attempts</Status></div><div>{attempts.map(attempt=>{let answers:Record<string,string>={};try{answers=JSON.parse(attempt.answers_json)as Record<string,string>;}catch{answers={};}const questions=reviewQuestions.filter(question=>question.quiz_id===attempt.quiz_id);return <details key={attempt.id}><summary><span><strong>{attempt.student}</strong><small>{attempt.scope==="course"?"COURSE":"STANDALONE"} · {attempt.kind.replaceAll("_"," ")}</small></span><span><b>{attempt.max_score?Math.round(attempt.score*100/attempt.max_score):0}%</b><small>{attempt.quiz}</small></span><time>{new Intl.DateTimeFormat("en-IN",{dateStyle:"medium",timeStyle:"short"}).format(new Date(attempt.submitted_at))}</time></summary><div className="attempt-answer-list">{questions.map((question,index)=>{let correct="";try{correct=String(JSON.parse(question.answer_json));}catch{correct=question.answer_json;}const given=answers[question.id]??"";return <article key={question.id}><span>{index+1}</span><div><MathText text={question.prompt}/><small>Student: <b>{given||"No answer"}</b></small><small>Correct: <b>{correct}</b></small></div></article>})}</div>{attempt.kind==="final_assessment"?<form className="manual-reset-form" action="/api/lms" method="post"><input type="hidden" name="action" value="reset-assessment-attempt"/><input type="hidden" name="quizId" value={attempt.quiz_id}/><input type="hidden" name="learnerId" value={attempt.student_id}/><button>Reset final assessment attempt</button></form>:null}</details>})}{!attempts.length?<p className="empty-copy">Student attempts will appear here with every submitted and correct answer.</p>:null}</div></section>
   </LmsShell>;
 }

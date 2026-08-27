@@ -6,7 +6,7 @@ import MathText from "../../MathText";
 
 type Course = { id: string; title: string };
 type Chapter = { id: string; course_id: string; title: string; position: number };
-type LessonFormat = "html" | "video" | "scorm" | "presentation" | "document" | "iframe" | "audio" | "image";
+type LessonFormat = "html" | "video" | "scorm" | "presentation" | "document" | "iframe" | "game" | "audio" | "image";
 
 const mathTools = [
   ["Fraction", "\\frac{a}{b}"], ["Square root", "\\sqrt{x}"], ["Power", "x^{n}"], ["Subscript", "x_{n}"],
@@ -21,6 +21,7 @@ const formatHelp: Record<LessonFormat, { label: string; help: string; accept: st
   presentation: { label: "Presentation", help: "Upload PPT, PPTX, ODP or PDF slides.", accept: ".ppt,.pptx,.odp,.pdf", url: false, upload: true },
   document: { label: "Document", help: "Upload PDF, Word, OpenDocument, spreadsheet or text files.", accept: ".pdf,.doc,.docx,.odt,.rtf,.txt,.csv,.xls,.xlsx,.ods", url: false, upload: true },
   iframe: { label: "Embedded webpage", help: "Paste a secure HTTPS embed URL from an approved learning tool.", accept: "", url: true, upload: false },
+  game: { label: "Embedded learning game", help: "Paste a secure HTTPS game URL. The game stays inside the virtual classroom.", accept: "", url: true, upload: false },
   audio: { label: "Audio lesson", help: "Upload audio or paste a direct audio URL.", accept: "audio/*", url: true, upload: true },
   image: { label: "Image lesson", help: "Upload diagrams, worksheets, infographics or other lesson imagery.", accept: "image/*", url: false, upload: true },
 };
@@ -75,13 +76,13 @@ export default function LessonAuthoringForm({ courses, chapters }: { courses: Co
       </div>
       <div ref={editor} className="rich-editor-canvas" contentEditable suppressContentEditableWarning onInput={syncHtml} dangerouslySetInnerHTML={{ __html: html }} />
       <div className="lesson-math-workbench">
-        <div><Sigma size={18} /><label>Advanced formula<input value={formula} onChange={(event) => setFormula(event.target.value)} aria-label="LaTeX formula" /></label><button type="button" onClick={insertFormula}>Insert into lesson</button></div>
+        <div className="lesson-formula-controls"><Sigma size={18} /><label>Advanced formula<input value={formula} onChange={(event) => setFormula(event.target.value)} aria-label="LaTeX formula" /></label><button type="button" onClick={insertFormula}>Insert into lesson</button></div>
         <div className="lesson-math-tools">{mathTools.map(([title, snippet]) => <button type="button" title={title} onClick={() => setFormula(snippet)} key={title}><MathText text={`$${snippet}$`} /></button>)}</div>
         <div className="lesson-math-preview"><small>FORMATTED PREVIEW</small><MathText text={`$${formula}$`} /></div>
       </div>
     </section>
 
-    {config.url ? <label>{format === "iframe" ? "Secure embed URL" : `${config.label} URL (optional when uploading)`}<input name="embedUrl" type="url" placeholder={format === "video" ? "YouTube, Vimeo or direct MP4 URL" : format === "audio" ? "Direct MP3 or audio URL" : "https://..."} /></label> : null}
+    {config.url ? <label>{format === "iframe" || format === "game" ? "Secure embed URL" : `${config.label} URL (optional when uploading)`}<input name="embedUrl" type="url" placeholder={format === "video" ? "YouTube, Vimeo or direct MP4 URL" : format === "audio" ? "Direct MP3 or audio URL" : "https://..."} /></label> : null}
     {config.upload ? <label>{format === "html" ? "Inline lesson images (optional)" : `${config.label} upload`}<input name="mediaFiles" type="file" accept={config.accept} multiple={format === "html"} /></label> : null}
     <label className="check-row"><input type="checkbox" name="isUnlocked" /> Unlock lesson now</label>
     <button>Publish lesson →</button>
