@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 const poppins = Poppins({ subsets: ["latin"], weight: ["300", "400", "500", "600"], display: "swap", variable: "--font-poppins" });
 
 const pageTitle = "Login | Skillvelop Academy — Learning Management System";
-const pageDescription = "Sign in to Skillvelop Academy, the learning management system for live 1:1 online classes, structured courses, assignments, quizzes, tutor feedback and progress tracking.";
-const organisationDescription = "Skillvelop Academy is a role-based learning management system for live 1:1 online classes, giving administrators, tutors and students one workspace for courses, scheduled classes, assignments, quizzes, feedback, reports and certificates.";
+const pageDescription = "Sign in to Skillvelop Academy, the learning management system for online classes, structured courses, assignments, quizzes, tutor feedback and progress tracking.";
+const organisationDescription = "Skillvelop Academy is a role-based learning management system for online teaching, giving administrators, tutors and students one workspace for courses, scheduled classes, assignments, quizzes, feedback, reports and certificates.";
 const supportEmail = "support@skillvelop.com";
 
 async function siteOrigin() {
@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
       "student login portal",
       "tutor login",
       "online tutoring platform",
-      "live 1:1 online classes",
+      "online classes",
       "online learning platform",
       "course and assignment management",
       "student progress tracking",
@@ -71,7 +71,7 @@ function structuredData(origin: string) {
         email: supportEmail,
         logo: { "@type": "ImageObject", "@id": `${origin}/#logo`, url: `${origin}/skillvelop-logo.png`, contentUrl: `${origin}/skillvelop-logo.png`, width: 2752, height: 1536, caption: "Skillvelop Academy" },
         image: { "@id": `${origin}/#logo` },
-        knowsAbout: ["Live 1:1 online tutoring", "Curriculum and course management", "Assignments and quizzes", "Learner progress tracking"],
+        knowsAbout: ["Online classes and tutoring", "Curriculum and course management", "Assignments and quizzes", "Learner progress tracking"],
         contactPoint: { "@type": "ContactPoint", contactType: "customer support", email: supportEmail, availableLanguage: ["English"] },
       },
       { "@type": "WebSite", "@id": `${origin}/#website`, url: `${origin}/`, name: "Skillvelop Academy", description: organisationDescription, inLanguage: "en", publisher: { "@id": `${origin}/#organization` } },
@@ -81,8 +81,8 @@ function structuredData(origin: string) {
 }
 
 const chips = [
-  { icon: Video, label: "Live 1:1 classes" },
-  { icon: BookOpen, label: "Guided curriculum" },
+  { icon: Video, label: "Tutor-led classes" },
+  { icon: BookOpen, label: "Structured curriculum" },
   { icon: TrendingUp, label: "Tracked progress" },
 ];
 
@@ -131,9 +131,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <section className={styles.stage}>
       <div className={styles.left}>
         <div className={styles.intro}>
-          <span className={styles.eyebrow}><span className={styles.live}/> Live 1:1 learning</span>
+          <span className={styles.eyebrow}><span className={styles.pulse}/> Learning workspace</span>
           <h1>Your next class is <em>ready</em> when you are.</h1>
-          <p className={styles.lead}>Live teaching, coursework and feedback in one workspace.</p>
+          <p className={styles.lead}>Classes, coursework and feedback in one workspace.</p>
         </div>
         <div className={styles.chips}>
           {chips.map(({ icon: Icon, label }) => <span className={styles.chip} key={label}><Icon size={15}/>{label}</span>)}
