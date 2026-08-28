@@ -482,7 +482,7 @@ export async function POST(request: Request) {
 
   if(action==="replace-weekly-availability"){
     if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});
-    const tutorId=profile.role==="admin"?value(form,"tutorId"):profile.id,timezone=value(form,"timeZone");
+    const tutorId=profile.role==="admin"?(value(form,"tutorId")||"usr_demo_tutor"):profile.id,timezone=value(form,"timeZone");
     if(validTimeZone(timezone)!==timezone)return redirectTo(request,"/dashboard/tutor/classes?error=availability");
     const now=new Date().toISOString(),slots:Array<{weekday:number;start:number;end:number}>=[];
     for(let weekday=0;weekday<7;weekday+=1){
@@ -492,7 +492,7 @@ export async function POST(request: Request) {
       slots.push({weekday,start,end});
     }
     const tutor=await db.prepare("SELECT id FROM users WHERE id=? AND role='tutor' AND status='active'").bind(tutorId).first();
-    if(!tutor)return NextResponse.json({error:"Tutor not found"},{status:404});
+    if(!tutor)return redirectTo(request,"/dashboard/tutor/classes?error=availability-tutor");
     await db.batch([
       db.prepare("DELETE FROM tutor_availability_slots WHERE tutor_id=?").bind(tutorId),
       ...slots.map(slot=>db.prepare("INSERT INTO tutor_availability_slots (id,tutor_id,weekday,start_minutes,end_minutes,timezone,is_open,created_at,updated_at) VALUES (?,?,?,?,?,?,1,?,?)").bind(createId("slt"),tutorId,slot.weekday,slot.start,slot.end,timezone,now,now)),
@@ -501,7 +501,7 @@ export async function POST(request: Request) {
   }
 
   if(action==="save-availability-slot"){
-    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});const tutorId=profile.role==="admin"?value(form,"tutorId"):profile.id,weekday=Math.max(0,Math.min(6,Number(value(form,"weekday")))),start=clockMinutes(value(form,"startTime")),end=clockMinutes(value(form,"endTime")),timezone=value(form,"timeZone");if(start<0||end<=start||validTimeZone(timezone)!==timezone)return redirectTo(request,"/dashboard/tutor/classes?error=availability");const tutor=await db.prepare("SELECT id FROM users WHERE id=? AND role='tutor' AND status='active'").bind(tutorId).first(),overlap=await db.prepare("SELECT id FROM tutor_availability_slots WHERE tutor_id=? AND weekday=? AND is_open=1 AND start_minutes<? AND end_minutes>?").bind(tutorId,weekday,end,start).first();if(!tutor||overlap)return redirectTo(request,"/dashboard/tutor/classes?error=availability-overlap");const now=new Date().toISOString();await db.prepare("INSERT INTO tutor_availability_slots (id,tutor_id,weekday,start_minutes,end_minutes,timezone,is_open,created_at,updated_at) VALUES (?,?,?,?,?,?,1,?,?)").bind(createId("slt"),tutorId,weekday,start,end,timezone,now,now).run();return redirectTo(request,"/dashboard/tutor/classes?updated=availability");
+    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});const tutorId=profile.role==="admin"?(value(form,"tutorId")||"usr_demo_tutor"):profile.id,weekday=Math.max(0,Math.min(6,Number(value(form,"weekday")))),start=clockMinutes(value(form,"startTime")),end=clockMinutes(value(form,"endTime")),timezone=value(form,"timeZone");if(start<0||end<=start||validTimeZone(timezone)!==timezone)return redirectTo(request,"/dashboard/tutor/classes?error=availability");const tutor=await db.prepare("SELECT id FROM users WHERE id=? AND role='tutor' AND status='active'").bind(tutorId).first(),overlap=await db.prepare("SELECT id FROM tutor_availability_slots WHERE tutor_id=? AND weekday=? AND is_open=1 AND start_minutes<? AND end_minutes>?").bind(tutorId,weekday,end,start).first();if(!tutor)return redirectTo(request,"/dashboard/tutor/classes?error=availability-tutor");if(overlap)return redirectTo(request,"/dashboard/tutor/classes?error=availability-overlap");const now=new Date().toISOString();await db.prepare("INSERT INTO tutor_availability_slots (id,tutor_id,weekday,start_minutes,end_minutes,timezone,is_open,created_at,updated_at) VALUES (?,?,?,?,?,?,1,?,?)").bind(createId("slt"),tutorId,weekday,start,end,timezone,now,now).run();return redirectTo(request,"/dashboard/tutor/classes?updated=availability");
   }
 
   if(action==="delete-availability-slot"){

@@ -10,14 +10,14 @@ export default function DesktopSidebarToggle() {
 
   useEffect(() => {
     const saved = window.localStorage.getItem(STORAGE_KEY) === "1";
-    const app = document.querySelector<HTMLElement>(".lms-app");
+    const app = document.querySelector<HTMLElement>(".lms-app, .course-player");
     app?.classList.toggle("sidebar-collapsed", saved);
     setCollapsed(saved);
   }, []);
 
   function toggleSidebar() {
     const next = !collapsed;
-    const app = document.querySelector<HTMLElement>(".lms-app");
+    const app = document.querySelector<HTMLElement>(".lms-app, .course-player");
     app?.classList.toggle("sidebar-collapsed", next);
     window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
     setCollapsed(next);
@@ -36,3 +36,4 @@ export default function DesktopSidebarToggle() {
     </button>
   );
 }
+
