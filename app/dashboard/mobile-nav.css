@@ -3,4 +3,8 @@
 @media(max-width:900px), (hover:none) and (pointer:coarse){
   .desktop-sidebar-toggle,.desktop-sidebar-menu{display:none!important}
 }
+@media(max-width:760px){
+  body>.mobile-menu,
+  body>.mobile-nav-overlay{display:none!important}
+}
 

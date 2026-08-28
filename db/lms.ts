@@ -109,12 +109,8 @@ export async function ensureProfile(user: ChatGPTUser): Promise<UserProfile> {
     profile = { id: createId("usr"), auth_user_id: user.userId, email: user.email, name: user.displayName, public_id:createPublicId(role), role, status: "active", created_at: new Date().toISOString() };
     await db.prepare("INSERT INTO users (id, auth_user_id, email, name, public_id, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)").bind(profile.id, profile.auth_user_id, profile.email, profile.name, profile.public_id, profile.role, profile.status, profile.created_at).run();
   }
-  await seedDemoData();
-  await seedLearningContent();
-  await ensureCourseStructure();
-  await seedCompleteMathCourse();
-  await seedGamification();
-  if (profile.role === "student") await enrollStudent(profile.id);
+  // Schema and demo-content setup belongs in versioned migrations. Keeping
+  // authenticated requests read-light avoids timeouts across every LMS page.
   return profile;
 }
 

@@ -66,3 +66,25 @@ test("includes every role workspace and the protected LMS action surface", async
   for (const table of ["curricula", "curriculum_subjects", "assessment_reset_requests", "tutor_availability_slots", "demo_bookings", "chat_moderation_alerts"]) assert.match(migration, new RegExp(table));
 });
 
+test("keeps the mobile dashboard shell singular and request-time profile loading lightweight", async () => {
+  const [layout, mobileNav, lms] = await Promise.all([
+    source("app/dashboard/layout.tsx"),
+    source("app/dashboard/mobile-nav.css"),
+    source("db/lms.ts"),
+  ]);
+
+  assert.doesNotMatch(layout, /MobileSidebar|<MobileMenu/);
+  assert.match(mobileNav, /body>\.mobile-menu/);
+
+  const ensureProfile = lms.match(/export async function ensureProfile[\s\S]*?\n}\n/)?.[0] ?? "";
+  assert.ok(ensureProfile, "ensureProfile should be present");
+  for (const requestTimeBootstrap of [
+    "seedDemoData",
+    "seedLearningContent",
+    "ensureCourseStructure",
+    "seedCompleteMathCourse",
+    "seedGamification",
+    "enrollStudent",
+  ]) assert.doesNotMatch(ensureProfile, new RegExp(`${requestTimeBootstrap}\\(`));
+});
+
