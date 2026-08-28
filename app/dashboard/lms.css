@@ -199,3 +199,19 @@
 @media(max-width:980px){.course-catalog-filter{grid-template-columns:1fr 1fr}.course-catalog-filter>.course-filter-field:first-child{grid-column:1/-1}}
 @media(max-width:680px){.sequence-player{display:block}.sequence-player .player-sidebar{position:static;width:auto;padding:14px}.sequence-player .player-main{grid-template-rows:58px 1fr 70px}.sequence-player .player-canvas{padding:16px 10px 24px}.sequence-player .lesson-stage{padding:21px 17px}.player-brand{width:112px;height:42px}.player-brand img{width:108px!important;height:42px!important}.course-ai-float.topbar .course-ai-trigger{min-width:38px;width:38px;padding:0}.course-ai-float.topbar .course-ai-trigger span{display:none}.player-ai-unavailable{display:none!important}.sequence-previous{max-width:40%!important}.sequence-previous>span{font-size:10px}.sequence-footer .complete-button{max-width:58%;font-size:11px!important;padding:11px 12px}.assessment-reset-request{padding:17px}.assessment-reset-request form{grid-template-columns:1fr}.assessment-request-status{margin-left:0}.course-catalog-filter{grid-template-columns:1fr}.course-catalog-filter>.course-filter-field:first-child{grid-column:auto}.course-catalog-filter>button,.course-filter-clear{width:100%}}
 
+/* Responsive shell repair: keep navigation and page actions usable at phone widths. */
+@media(max-width:760px){
+  .lms-topbar>div:first-child{display:flex;align-items:center;min-width:0}
+  .lms-topbar .mobile-menu{display:inline-flex!important;flex:0 0 38px}
+  .lms-topbar .crumb{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .page-heading .heading-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:10px}
+  .page-heading .heading-actions>.primary-action,
+  .page-heading .heading-actions>.action-menu,
+  .page-heading .heading-actions>.action-menu>summary{width:100%;min-width:0;box-sizing:border-box}
+  .page-heading .heading-actions>.primary-action,
+  .page-heading .heading-actions>.action-menu>summary{min-height:46px;padding:11px 13px;gap:8px;text-align:center;white-space:normal;overflow-wrap:normal;word-break:normal}
+}
+@media(max-width:390px){
+  .page-heading .heading-actions{grid-template-columns:1fr}
+}
+
