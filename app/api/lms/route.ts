@@ -35,7 +35,7 @@ function lessonResourceType(file: File, preferred?: string) {
   if (ext === "pdf") return "pdf";
   return "document";
 }
-function safeQuizEmbedUrl(input:string){
+function safeHttpsUrl(input:string){
   if(!input||input.length>2000)return "";
   try{
     const parsed=new URL(input);const host=parsed.hostname.toLowerCase().replace(/^\[|\]$/g,"");
@@ -299,7 +299,7 @@ export async function POST(request: Request) {
     let resourceType=allowed(value(form,"resourceType"),["none","image","pdf","document","presentation","iframe"] as const,"none") as QuizResourceType;
     let imageKey="",imageName="",imageType="",imageSize=0,resourceEmbedUrl="";
     if(resourceType==="iframe"){
-      resourceEmbedUrl=safeQuizEmbedUrl(value(form,"embedUrl"));
+      resourceEmbedUrl=safeHttpsUrl(value(form,"embedUrl"));
       if(!resourceEmbedUrl)return redirectTo(request,`${questionReturn}${questionReturn.includes('?')?'&':'?'}error=question-embed`);
     }else if(resourceFile instanceof File&&resourceFile.size>0){
       if(resourceType==="none"&&legacyImage instanceof File)resourceType="image";
@@ -403,10 +403,52 @@ export async function POST(request: Request) {
     const course = await db.prepare("SELECT id FROM courses WHERE id=? AND tutor_id=?").bind(courseId, tutorId).first();
     if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 });
     const title = value(form, "title"); const startsAt = value(form, "startsAt");const timeZone=validTimeZone(value(form,"timeZone")||"Asia/Kolkata");const startsAtUtc=zonedLocalToUtc(startsAt,timeZone);
-    const duration = Math.max(15, Math.min(180, Number(value(form, "duration")) || 60));
-    if (!title || !startsAtUtc) return redirectTo(request, "/dashboard/tutor/classes/new?error=invalid-class");
-    await db.prepare("INSERT INTO live_classes (id, course_id, tutor_id, student_id, title, starts_at, duration_minutes, meeting_url, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', '')").bind(createId("cls"), courseId, tutorId, studentId, title, startsAtUtc, duration, value(form, "meetingUrl")).run();
+    const duration = Math.max(15, Math.min(180, Number(value(form, "duration")) || 60)),meetingUrl=safeHttpsUrl(value(form,"meetingUrl"));
+    const enrolled=studentId?await db.prepare("SELECT id FROM enrollments WHERE course_id=? AND student_id=?").bind(courseId,studentId).first():null;
+    if (!title || !startsAtUtc || !meetingUrl || (studentId&&!enrolled)) return redirectTo(request, "/dashboard/tutor/classes/new?error=invalid-class");
+    await db.prepare("INSERT INTO live_classes (id, course_id, tutor_id, student_id, title, starts_at, duration_minutes, meeting_url, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', '')").bind(createId("cls"), courseId, tutorId, studentId, title, startsAtUtc, duration, meetingUrl).run();
     return redirectTo(request, "/dashboard/tutor/classes?created=class");
+  }
+
+  if(action==="update-class"){
+    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});
+    const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id,classId=value(form,"classId"),courseId=value(form,"courseId"),studentId=value(form,"studentId")||null,title=value(form,"title").slice(0,180),timeZone=validTimeZone(value(form,"timeZone")||"Asia/Kolkata"),startsAtUtc=zonedLocalToUtc(value(form,"startsAt"),timeZone),duration=Math.max(15,Math.min(180,Number(value(form,"duration"))||60)),meetingUrl=safeHttpsUrl(value(form,"meetingUrl"));
+    const [scheduledClass,course,enrolled]=await Promise.all([
+      db.prepare("SELECT id FROM live_classes WHERE id=? AND tutor_id=? AND status='scheduled'").bind(classId,tutorId).first(),
+      db.prepare("SELECT id FROM courses WHERE id=? AND tutor_id=? AND status='active'").bind(courseId,tutorId).first(),
+      studentId?db.prepare("SELECT id FROM enrollments WHERE course_id=? AND student_id=?").bind(courseId,studentId).first():Promise.resolve(null),
+    ]);
+    if(!scheduledClass||!course||!title||!startsAtUtc||!meetingUrl||(studentId&&!enrolled))return redirectTo(request,`/dashboard/tutor/classes/${encodeURIComponent(classId)}/edit?error=invalid-class`);
+    await db.prepare("UPDATE live_classes SET course_id=?,student_id=?,title=?,starts_at=?,duration_minutes=?,meeting_url=? WHERE id=? AND tutor_id=? AND status='scheduled'").bind(courseId,studentId,title,startsAtUtc,duration,meetingUrl,classId,tutorId).run();
+    return redirectTo(request,"/dashboard/tutor/classes?updated=class");
+  }
+
+  if(action==="delete-class"){
+    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});
+    const tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id,classId=value(form,"classId");
+    const result=await db.prepare("DELETE FROM live_classes WHERE id=? AND tutor_id=? AND status='scheduled'").bind(classId,tutorId).run();
+    if(!result.meta.changes)return NextResponse.json({error:"Scheduled class not found"},{status:404});
+    return redirectTo(request,"/dashboard/tutor/classes?deleted=class");
+  }
+
+  if(action==="replace-weekly-availability"){
+    if(profile.role!=="tutor"&&profile.role!=="admin")return NextResponse.json({error:"Tutor access required"},{status:403});
+    const tutorId=profile.role==="admin"?value(form,"tutorId"):profile.id,timezone=value(form,"timeZone");
+    if(validTimeZone(timezone)!==timezone)return redirectTo(request,"/dashboard/tutor/classes?error=availability");
+    const now=new Date().toISOString(),slots:Array<{weekday:number;start:number;end:number}>=[];
+    for(let weekday=0;weekday<7;weekday+=1){
+      if(value(form,`open_${weekday}`)!=="1")continue;
+      const start=clockMinutes(value(form,`start_${weekday}`)),end=clockMinutes(value(form,`end_${weekday}`));
+      if(start<0||end<=start)return redirectTo(request,"/dashboard/tutor/classes?error=availability");
+      slots.push({weekday,start,end});
+    }
+    const tutor=await db.prepare("SELECT id FROM users WHERE id=? AND role='tutor' AND status='active'").bind(tutorId).first();
+    if(!tutor)return NextResponse.json({error:"Tutor not found"},{status:404});
+    await db.batch([
+      db.prepare("DELETE FROM tutor_availability_slots WHERE tutor_id=?").bind(tutorId),
+      ...slots.map(slot=>db.prepare("INSERT INTO tutor_availability_slots (id,tutor_id,weekday,start_minutes,end_minutes,timezone,is_open,created_at,updated_at) VALUES (?,?,?,?,?,?,1,?,?)").bind(createId("slt"),tutorId,slot.weekday,slot.start,slot.end,timezone,now,now)),
+    ]);
+    return redirectTo(request,"/dashboard/tutor/classes?updated=availability");
   }
 
   if(action==="save-availability-slot"){
@@ -419,9 +461,9 @@ export async function POST(request: Request) {
 
   if(action==="confirm-demo-booking"){
     if(!(await canManage(profile,"manage_classes")))return NextResponse.json({error:"Class management access required"},{status:403});
-    const bookingId=value(form,"bookingId"),courseId=value(form,"courseId"),tutorId=value(form,"tutorId"),meetingUrl=value(form,"meetingUrl");
+    const bookingId=value(form,"bookingId"),courseId=value(form,"courseId"),tutorId=value(form,"tutorId"),meetingUrl=safeHttpsUrl(value(form,"meetingUrl"));
     const booking=await db.prepare("SELECT id,student_name,starts_at,duration_minutes,notes FROM demo_bookings WHERE id=? AND status='requested'").bind(bookingId).first<{id:string;student_name:string;starts_at:string;duration_minutes:number;notes:string}>(),course=await db.prepare("SELECT id FROM courses WHERE id=? AND status='active'").bind(courseId).first(),tutor=await db.prepare("SELECT id FROM users WHERE id=? AND role='tutor' AND status='active'").bind(tutorId).first();
-    if(!booking||!course||!tutor)return redirectTo(request,"/dashboard/admin/classes?error=demo-confirmation");
+    if(!booking||!course||!tutor||!meetingUrl)return redirectTo(request,"/dashboard/admin/classes?error=demo-confirmation");
     await db.batch([
       db.prepare("UPDATE demo_bookings SET tutor_id=?,status='confirmed' WHERE id=? AND status='requested'").bind(tutorId,bookingId),
       db.prepare("INSERT INTO live_classes (id,course_id,tutor_id,student_id,title,starts_at,duration_minutes,meeting_url,status,notes) VALUES (?,?,?,NULL,?,?,?,?, 'scheduled',?)").bind(createId("cls"),courseId,tutorId,`Demo class · ${booking.student_name}`.slice(0,180),booking.starts_at,Number(booking.duration_minutes??30),meetingUrl,booking.notes),
@@ -465,7 +507,7 @@ export async function POST(request: Request) {
   if (action === "create-lesson") {
     if (profile.role !== "tutor" && profile.role !== "admin") return NextResponse.json({ error: "Tutor access required" }, { status: 403 });
     const courseId=value(form,"courseId"),chapterId=value(form,"chapterId")||null;const course=profile.role==="admin"?await db.prepare("SELECT id,tutor_id FROM courses WHERE id=? AND status='active'").bind(courseId).first<{id:string;tutor_id:string}>():await db.prepare("SELECT id,tutor_id FROM courses WHERE id=? AND tutor_id=? AND creator_role='tutor' AND creator_id=? AND status='active'").bind(courseId,profile.id,profile.id).first<{id:string;tutor_id:string}>();const tutorId=course?.tutor_id??profile.id;
-    const title=value(form,"title"),summary=value(form,"summary"),format=allowed(value(form,"contentFormat"),["html","video","scorm","presentation","document","iframe","game","audio","image"] as const,"html"),content=sanitizeLessonHtml(value(form,"content")),rawEmbed=(value(form,"embedUrl")||value(form,"videoUrl")).slice(0,1200),embedUrl=["iframe","game"].includes(format)?safeQuizEmbedUrl(rawEmbed):rawEmbed,position=Math.max(1,Number(value(form,"position"))||1),duration=Math.max(5,Math.min(240,Number(value(form,"duration"))||30));
+    const title=value(form,"title"),summary=value(form,"summary"),format=allowed(value(form,"contentFormat"),["html","video","scorm","presentation","document","iframe","game","audio","image"] as const,"html"),content=sanitizeLessonHtml(value(form,"content")),rawEmbed=(value(form,"embedUrl")||value(form,"videoUrl")).slice(0,1200),embedUrl=["iframe","game"].includes(format)?safeHttpsUrl(rawEmbed):rawEmbed,position=Math.max(1,Number(value(form,"position"))||1),duration=Math.max(5,Math.min(240,Number(value(form,"duration"))||30));
     const mediaFiles=form.getAll("mediaFiles").filter((entry):entry is File=>entry instanceof File&&entry.size>0).slice(0,8);
     if(embedUrl&&!/^https?:\/\//i.test(embedUrl))return redirectTo(request,"/dashboard/tutor/curriculum?error=invalid-media-url");
     if(["iframe","game"].includes(format)&&!embedUrl)return redirectTo(request,"/dashboard/tutor/curriculum?error=invalid-embed");
@@ -548,4 +590,5 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ error: "Unknown LMS action" }, { status: 400 });
 }
+
 

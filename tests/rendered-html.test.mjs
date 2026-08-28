@@ -34,25 +34,35 @@ test("includes every role workspace and the protected LMS action surface", async
     access(new URL("app/dashboard/tutor/curriculum/page.tsx", root)),
     access(new URL("app/dashboard/tutor/quizzes/page.tsx", root)),
     access(new URL("app/dashboard/tutor/classes/page.tsx", root)),
+    access(new URL("app/dashboard/tutor/classes/[classId]/edit/page.tsx", root)),
     access(new URL("app/dashboard/student/curriculum/[courseId]/learn/[itemType]/[itemId]/page.tsx", root)),
     access(new URL("app/dashboard/student/quizzes/page.tsx", root)),
     access(new URL("app/api/quiz-media/[id]/route.ts", root)),
     access(new URL("supabase/migrations/202608270004_quiz_question_resources.sql", root)),
     access(new URL("supabase/migrations/202608280001_course_builder_foundation.sql", root)),
   ]);
-  const [api, builder, curricula, migration] = await Promise.all([
+  const [api, builder, curricula, migration, schedule, editClass, classList] = await Promise.all([
     source("app/api/lms/route.ts"),
     source("app/dashboard/tutor/curriculum/page.tsx"),
     source("app/dashboard/admin/curriculum/page.tsx"),
     source("supabase/migrations/202608280001_course_builder_foundation.sql"),
+    source("app/dashboard/tutor/classes/new/page.tsx"),
+    source("app/dashboard/tutor/classes/[classId]/edit/page.tsx"),
+    source("app/dashboard/tutor/classes/page.tsx"),
   ]);
   for (const action of [
     "create-course", "create-tutor-course", "import-course", "create-chapter", "create-lesson",
     "create-quiz", "add-quiz-question", "submit-quiz", "request-assessment-reset",
-    "approve-assessment-reset", "save-availability-slot", "confirm-demo-booking", "send-message",
+    "approve-assessment-reset", "save-availability-slot", "replace-weekly-availability", "update-class", "delete-class", "confirm-demo-booking", "send-message",
   ]) assert.match(api, new RegExp(action));
   for (const capability of ["releaseMode", "final_assessment", "QuizQuestionBuilder", "LessonAuthoringForm"]) assert.match(builder, new RegExp(capability));
   assert.match(curricula, /Curricula & subjects/);
   assert.doesNotMatch(curricula, /Curriculum Library/i);
+  assert.match(schedule, /name="meetingUrl"[^>]*required/);
+  assert.match(editClass, /name="action" value="update-class"/);
+  assert.match(classList, /name="action" value="replace-weekly-availability"/);
+  assert.match(api, /DELETE FROM live_classes WHERE id=\? AND tutor_id=\? AND status='scheduled'/);
+  assert.match(api, /meetingUrl=safeHttpsUrl\(value\(form,"meetingUrl"\)\)/);
   for (const table of ["curricula", "curriculum_subjects", "assessment_reset_requests", "tutor_availability_slots", "demo_bookings", "chat_moderation_alerts"]) assert.match(migration, new RegExp(table));
 });
+
