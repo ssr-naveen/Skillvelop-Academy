@@ -88,3 +88,27 @@ test("keeps the mobile dashboard shell singular and request-time profile loading
   ]) assert.doesNotMatch(ensureProfile, new RegExp(`${requestTimeBootstrap}\\(`));
 });
 
+test("bounds database work and keeps tutor aggregate queries non-multiplicative", async () => {
+  const [database, courses, quizzes, work, migration] = await Promise.all([
+    source("lib/platform-env.ts"),
+    source("app/dashboard/tutor/courses/page.tsx"),
+    source("app/dashboard/tutor/quizzes/page.tsx"),
+    source("app/dashboard/tutor/work/page.tsx"),
+    source("supabase/migrations/202608280003_tutor_query_performance.sql"),
+  ]);
+
+  for (const safeguard of ["queryTimeoutMs", "statement_timeout", "max_lifetime", "idle_timeout", "retrying timed-out read"]) {
+    assert.match(database, new RegExp(safeguard));
+  }
+  assert.match(courses, /SELECT COUNT\(\*\) FROM enrollments e WHERE e\.course_id=c\.id/);
+  assert.match(courses, /SELECT COUNT\(\*\) FROM chapters ch WHERE ch\.course_id=c\.id/);
+  assert.match(quizzes, /SELECT COUNT\(\*\) FROM quiz_attempts qa WHERE qa\.quiz_id=q\.id/);
+  assert.match(work, /SELECT COUNT\(\*\) FROM submissions s WHERE s\.activity_id=a\.id/);
+  for (const index of [
+    "idx_enrollments_course_student",
+    "idx_activities_tutor_due",
+    "idx_submissions_activity_status_submitted",
+    "idx_quiz_attempts_quiz_student_submitted",
+  ]) assert.match(migration, new RegExp(index));
+});
+

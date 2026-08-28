@@ -100,6 +100,41 @@ function isRetiredDemoSeed(source: string, bindings: unknown[]): boolean {
 }
 
 let client: Sql | null = null;
+const queryTimeoutMs = 12_000;
+
+class DatabaseQueryTimeoutError extends Error {
+  constructor(readonly label: string) {
+    super(`Database query timed out: ${label}`);
+    this.name = "DatabaseQueryTimeoutError";
+  }
+}
+
+function queryLabel(source: string): string {
+  const operation = source.trim().match(/^(SELECT|INSERT|UPDATE|DELETE)/i)?.[1]?.toUpperCase() || "QUERY";
+  const table = source.match(/\b(?:FROM|INTO|UPDATE|JOIN)\s+(?:public\.)?([a-z_]+)/i)?.[1] || "database";
+  return `${operation} ${table}`;
+}
+
+async function executeWithDeadline(executor: Sql, source: string, bindings: unknown[]) {
+  const label = queryLabel(source);
+  const startedAt = Date.now();
+  const pending = executor.unsafe(source, bindings as never[]).execute();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      try { pending.cancel(); } catch { /* The server-side statement timeout remains the fallback. */ }
+      reject(new DatabaseQueryTimeoutError(label));
+    }, queryTimeoutMs);
+  });
+  try {
+    const rows = await Promise.race([pending, deadline]);
+    const durationMs = Date.now() - startedAt;
+    if (durationMs > 2_000) console.warn("[database] slow query", { label, durationMs });
+    return rows;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 function sqlClient(): Sql {
   if (client) return client;
@@ -112,10 +147,20 @@ function sqlClient(): Sql {
     username: process.env.DB_USERNAME || "postgres.dsrqzegrphnvhdjwxtlk",
     password,
     ssl: process.env.DB_SSLMODE === "disable" ? false : "require",
-    max: 5,
+    // Vercel functions can be frozen and resumed. Recycle connections quickly
+    // so a stale pooled socket cannot leave dashboard navigation hanging.
+    max: 2,
     prepare: false,
-    idle_timeout: 20,
-    connect_timeout: 10,
+    idle_timeout: 5,
+    max_lifetime: 60,
+    connect_timeout: 5,
+    keep_alive: 30,
+    connection: {
+      application_name: "skillvelop-lms",
+      statement_timeout: 10_000,
+      lock_timeout: 5_000,
+      idle_in_transaction_session_timeout: 10_000,
+    },
   });
   return client;
 }
@@ -126,7 +171,14 @@ class PreparedStatement implements D1PreparedStatement {
   bind(...values: unknown[]) { this.bindings = values; return this; }
   async execute(executor: Sql = sqlClient()) {
     if (isRetiredDemoSeed(this.source, this.bindings)) return [] as any;
-    return executor.unsafe(translateSql(this.source), this.bindings as never[]);
+    const translated = translateSql(this.source);
+    try {
+      return await executeWithDeadline(executor, translated, this.bindings);
+    } catch (error) {
+      if (!(error instanceof DatabaseQueryTimeoutError) || !/^\s*SELECT\b/i.test(this.source)) throw error;
+      console.warn("[database] retrying timed-out read", { label: error.label });
+      return executeWithDeadline(sqlClient(), translated, this.bindings);
+    }
   }
   async first<T>(): Promise<T | null> {
     const rows = await this.execute();
@@ -185,3 +237,4 @@ export const env = {
 };
 
 export type D1DatabaseCompat = PostgresDatabase;
+

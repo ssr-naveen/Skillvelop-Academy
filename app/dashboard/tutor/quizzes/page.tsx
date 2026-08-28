@@ -17,11 +17,13 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
   const profile=await requireRole("tutor","/dashboard/tutor/quizzes"),tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id;
   const [students,quizzes,assignments,attempts,reviewQuestions,resetRequests]=await Promise.all([
     all<Student>("SELECT id,name FROM users WHERE role='student' AND status='active' ORDER BY name"),
-    all<Quiz>(`SELECT q.id,q.title,q.description,q.question_count,q.is_unlocked,COUNT(DISTINCT qq.id) questions,COUNT(DISTINCT qa.id) attempts,COUNT(DISTINCT qas.id) assignments
-      FROM quizzes q LEFT JOIN quiz_questions qq ON qq.quiz_id=q.id LEFT JOIN quiz_attempts qa ON qa.quiz_id=q.id
-      LEFT JOIN quiz_assignments qas ON qas.quiz_id=q.id AND qas.status='active'
+    all<Quiz>(`SELECT q.id,q.title,q.description,q.question_count,q.is_unlocked,
+      (SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id=q.id) questions,
+      (SELECT COUNT(*) FROM quiz_attempts qa WHERE qa.quiz_id=q.id) attempts,
+      (SELECT COUNT(*) FROM quiz_assignments qas WHERE qas.quiz_id=q.id AND qas.status='active') assignments
+      FROM quizzes q
       WHERE q.tutor_id=? AND q.scope='standalone' AND q.status='published'
-      GROUP BY q.id ORDER BY q.created_at DESC`,tutorId),
+      ORDER BY q.created_at DESC`,tutorId),
     all<Assignment>(`SELECT a.id,a.quiz_id,a.student_id,u.name student,a.assigned_at FROM quiz_assignments a JOIN quizzes q ON q.id=a.quiz_id LEFT JOIN users u ON u.id=a.student_id WHERE q.tutor_id=? AND q.scope='standalone' AND a.status='active' ORDER BY a.assigned_at DESC`,tutorId),
     all<Attempt>(`SELECT qa.id,qa.quiz_id,q.title quiz,q.scope,q.kind,qa.student_id,u.name student,qa.answers_json,qa.score,qa.max_score,qa.submitted_at FROM quiz_attempts qa JOIN quizzes q ON q.id=qa.quiz_id JOIN users u ON u.id=qa.student_id WHERE q.tutor_id=? ORDER BY qa.submitted_at DESC LIMIT 100`,tutorId),
     all<ReviewQuestion>(`SELECT qq.id,qq.quiz_id,qq.prompt,qq.answer_json,qq.position FROM quiz_questions qq JOIN quizzes q ON q.id=qq.quiz_id WHERE q.tutor_id=? ORDER BY qq.quiz_id,qq.position`,tutorId),
@@ -46,3 +48,4 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
     <section className="panel quiz-results-review"><div className="panel-head"><div><span className="panel-kicker">STUDENT-WISE REVIEW</span><h2>Quiz & assessment results</h2><p>Course checks remain inside their courses; this consolidated view is for reviewing learner answers.</p></div><Status>{attempts.length} attempts</Status></div><div>{attempts.map(attempt=>{let answers:Record<string,string>={};try{answers=JSON.parse(attempt.answers_json)as Record<string,string>;}catch{answers={};}const questions=reviewQuestions.filter(question=>question.quiz_id===attempt.quiz_id);return <details key={attempt.id}><summary><span><strong>{attempt.student}</strong><small>{attempt.scope==="course"?"COURSE":"STANDALONE"} · {attempt.kind.replaceAll("_"," ")}</small></span><span><b>{attempt.max_score?Math.round(attempt.score*100/attempt.max_score):0}%</b><small>{attempt.quiz}</small></span><time>{new Intl.DateTimeFormat("en-IN",{dateStyle:"medium",timeStyle:"short"}).format(new Date(attempt.submitted_at))}</time></summary><div className="attempt-answer-list">{questions.map((question,index)=>{let correct="";try{correct=String(JSON.parse(question.answer_json));}catch{correct=question.answer_json;}const given=answers[question.id]??"";return <article key={question.id}><span>{index+1}</span><div><MathText text={question.prompt}/><small>Student: <b>{given||"No answer"}</b></small><small>Correct: <b>{correct}</b></small></div></article>})}</div>{attempt.kind==="final_assessment"?<form className="manual-reset-form" action="/api/lms" method="post"><input type="hidden" name="action" value="reset-assessment-attempt"/><input type="hidden" name="quizId" value={attempt.quiz_id}/><input type="hidden" name="learnerId" value={attempt.student_id}/><button>Reset final assessment attempt</button></form>:null}</details>})}{!attempts.length?<p className="empty-copy">Student attempts will appear here with every submitted and correct answer.</p>:null}</div></section>
   </LmsShell>;
 }
+
