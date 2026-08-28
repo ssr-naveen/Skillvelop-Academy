@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Poppins } from "next/font/google";
+import { DM_Sans } from "next/font/google";
 import "./globals.css";
 
-const poppins = Poppins({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
-  variable: "--font-poppins",
+  variable: "--font-dm-sans",
 });
 
 const title = "Skillvelop Academy — Build skills that move you forward";
@@ -28,5 +27,6 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" className={poppins.variable}><body>{children}</body></html>;
+  return <html lang="en" className={dmSans.variable}><body>{children}</body></html>;
 }
+

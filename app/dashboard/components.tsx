@@ -16,12 +16,14 @@ import {
   LibraryBig,
   LogOut,
   MessageCircle,
+  Menu,
   NotebookTabs,
   Send,
   Trophy,
   UserCog,
   Users,
   WandSparkles,
+  X,
 } from "lucide-react";
 import type { ManagerPermission, UserProfile, UserRole } from "@/db/lms";
 import { chatGPTSignOutPath } from "@/app/chatgpt-auth";
@@ -52,15 +54,18 @@ const roleNav: Record<WorkspaceRole, { href: string; label: string; icon: Lucide
 export function LmsShell({ profile, activeRole, activePath, eyebrow, title, subtitle, children, actions }: { profile: UserProfile; activeRole: WorkspaceRole; activePath?: string; eyebrow: string; title: string; subtitle: string; children: ReactNode; actions?: ReactNode }) {
   const nav = roleNav[activeRole].filter((item) => profile.role !== "manager" || !item.permission || profile.permissions?.includes(item.permission));
   return <div className="lms-app">
+    <input className="lms-menu-toggle" id="lms-menu-toggle" type="checkbox" aria-hidden="true" tabIndex={-1}/>
     <aside className={`lms-sidebar lms-sidebar-${activeRole}`}>
+      <label className="mobile-menu-close" htmlFor="lms-menu-toggle" aria-label="Close navigation"><X size={20}/></label>
       <a className="lms-brand" href="/" aria-label="Skillvelop home"><Image src="/skillvelop-logo.png" alt="Skillvelop" width={210} height={140} priority unoptimized /></a>
       <div className="workspace-label">{profile.role === "manager" ? "manager" : activeRole} workspace</div>
       <nav className="lms-nav" aria-label={`${activeRole} navigation`}>{nav.map((item) => { const Icon = item.icon; return <a className={(activePath ?? `/dashboard/${activeRole}`) === item.href ? "active" : ""} href={item.href} key={item.href}><span><Icon aria-hidden="true" size={18} strokeWidth={1.9} /></span>{item.label}</a>; })}</nav>
       {profile.role === "admin" && <div className="role-preview"><small>SWITCH WORKSPACE</small><a href="/dashboard/tutor">Tutor dashboard <Send aria-hidden="true" size={13} /></a><a href="/dashboard/student">Student dashboard <Send aria-hidden="true" size={13} /></a></div>}
       <div className="sidebar-profile"><span>{initials(profile.name)}</span><a className="profile-link" href="/dashboard/profile"><strong>{profile.name}</strong><small>{profile.role} · profile</small></a><a href={chatGPTSignOutPath("/")} aria-label="Sign out"><LogOut aria-hidden="true" size={17} /></a></div>
     </aside>
+    <label className="lms-menu-backdrop" htmlFor="lms-menu-toggle" aria-label="Close navigation"/>
     <main className="lms-main">
-      <header className="lms-topbar"><div><button className="mobile-menu" aria-label="Open menu">☰</button><span className="crumb">Skillvelop Academy / {activeRole}</span></div><div className="top-actions"><a href="#notifications" aria-label="Notifications"><Bell aria-hidden="true" size={19} strokeWidth={1.8} /><span /></a><div className="online"><i /> Platform online</div></div></header>
+      <header className="lms-topbar"><div><label className="mobile-menu" htmlFor="lms-menu-toggle" aria-label="Open navigation"><Menu size={20}/></label><span className="crumb">Skillvelop Academy / {activeRole}</span></div><div className="top-actions"><a href="#notifications" aria-label="Notifications"><Bell aria-hidden="true" size={19} strokeWidth={1.8} /><span /></a><div className="online"><i /> Platform online</div></div></header>
       <section className="lms-content">
         <div className="page-heading"><div><span className="page-eyebrow">{eyebrow}</span><h1>{title}</h1><p>{subtitle}</p></div>{actions}</div>
         {children}
@@ -84,7 +89,7 @@ export function Metric({ label, value, note, tone = "plain" }: { label: string; 
   return <article className={`metric-card ${tone}`}><i className="metric-icon"><Icon aria-hidden="true" size={20}/></i><span>{label}</span><strong>{value}</strong><small>{note}</small></article>;
 }
 
-export function Status({ children, tone = "green" }: { children: ReactNode; tone?: string }) { return <span className={`status ${tone}`}><i />{children}</span>; }
+export function Status({ children, tone = "green" }: { children: ReactNode; tone?: string }) { return <span className={`status ${tone}`}><i aria-hidden="true"/>{children}</span>; }
 export function initials(name: string) { return name.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase(); }
 export function formatDate(value: string, timeZone = "Asia/Kolkata") { try{return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year:"numeric",hour: "numeric", minute: "2-digit", timeZone, timeZoneName:"short" }).format(new Date(value));}catch{return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year:"numeric",hour: "numeric", minute: "2-digit", timeZone:"UTC",timeZoneName:"short" }).format(new Date(value));} }
 export function activityIcon(type: string) { return ({ homework: "⌂", quiz: "?", assessment: "◎", assignment: "▤", classwork: "✦" } as Record<string, string>)[type] ?? "✓"; }

@@ -1,7 +1,8 @@
-:root { --ink:#102a2e; --cream:#f8f5f7; --paper:#fffdfb; --coral:#ff7168; --blue:#7464d8; --mint:#ccefd7; --line:rgba(16,42,46,.14); --font-brand:var(--font-poppins),"Poppins",Arial,sans-serif; --font-geist:var(--font-brand); --font-manrope:var(--font-brand); }
+:root { --ink:#102a2e; --cream:#f8f5f7; --paper:#fffdfb; --coral:#ff7168; --blue:#7464d8; --mint:#ccefd7; --line:rgba(16,42,46,.14); --font-google-sans:var(--font-dm-sans),"Google Sans","Product Sans",Arial,sans-serif; --font-brand:var(--font-google-sans); --font-geist:var(--font-google-sans); --font-manrope:var(--font-google-sans); }
 * { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
-body { margin:0; background:var(--cream); color:var(--ink); font-family:var(--font-brand); font-synthesis:none; text-rendering:optimizeLegibility; -webkit-font-smoothing:antialiased; }
+body { margin:0; min-width:320px; background:var(--cream); color:var(--ink); font-family:var(--font-brand); font-synthesis:none; text-rendering:optimizeLegibility; -webkit-font-smoothing:antialiased; overflow-wrap:anywhere; }
+img,video,iframe { max-width:100%; }
 button,input,select,textarea { font:inherit; }
 a { color:inherit; text-decoration:none; }
 .shell { width:min(1180px, calc(100% - 48px)); margin-inline:auto; }
