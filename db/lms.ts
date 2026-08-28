@@ -7,7 +7,7 @@ export type UserProfile = { id: string; auth_user_id: string | null; email: stri
 
 const schema = [
   `CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, auth_user_id TEXT UNIQUE, email TEXT NOT NULL UNIQUE, name TEXT NOT NULL, public_id TEXT UNIQUE, role TEXT NOT NULL DEFAULT 'student', status TEXT NOT NULL DEFAULT 'active', created_at TEXT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS courses (id TEXT PRIMARY KEY, title TEXT NOT NULL, subject TEXT NOT NULL, level TEXT NOT NULL, description TEXT NOT NULL, cover_image_url TEXT NOT NULL DEFAULT '', is_unlocked INTEGER NOT NULL DEFAULT 1, is_imported INTEGER NOT NULL DEFAULT 0, tutor_id TEXT REFERENCES users(id), status TEXT NOT NULL DEFAULT 'active', accent TEXT NOT NULL DEFAULT 'blue', created_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS courses (id TEXT PRIMARY KEY, title TEXT NOT NULL, subject TEXT NOT NULL, level TEXT NOT NULL, description TEXT NOT NULL, cover_image_url TEXT NOT NULL DEFAULT '', is_unlocked INTEGER NOT NULL DEFAULT 1, is_imported INTEGER NOT NULL DEFAULT 0, tutor_id TEXT REFERENCES users(id), status TEXT NOT NULL DEFAULT 'active', accent TEXT NOT NULL DEFAULT 'blue', course_mode TEXT NOT NULL DEFAULT 'guided', created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS chapters (id TEXT PRIMARY KEY,course_id TEXT NOT NULL REFERENCES courses(id),tutor_id TEXT NOT NULL REFERENCES users(id),title TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',position INTEGER NOT NULL DEFAULT 1,is_unlocked INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS enrollments (id TEXT PRIMARY KEY, course_id TEXT NOT NULL REFERENCES courses(id), student_id TEXT NOT NULL REFERENCES users(id), progress INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, UNIQUE(course_id, student_id))`,
   `CREATE TABLE IF NOT EXISTS live_classes (id TEXT PRIMARY KEY, course_id TEXT NOT NULL REFERENCES courses(id), tutor_id TEXT NOT NULL REFERENCES users(id), student_id TEXT REFERENCES users(id), title TEXT NOT NULL, starts_at TEXT NOT NULL, duration_minutes INTEGER NOT NULL DEFAULT 60, meeting_url TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'scheduled', notes TEXT NOT NULL DEFAULT '', confirmation_requested_at TEXT, student_confirmed_at TEXT, student_rating INTEGER, student_feedback TEXT NOT NULL DEFAULT '')`,
@@ -252,4 +252,5 @@ export async function canManage(profile: UserProfile, permission: ManagerPermiss
   if (profile.role !== "manager") return false;
   return Boolean(await first("SELECT 1 ok FROM manager_permissions WHERE manager_id=? AND permission=?", profile.id, permission));
 }
+
 

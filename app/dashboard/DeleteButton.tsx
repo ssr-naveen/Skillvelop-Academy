@@ -2,9 +2,10 @@
 
 import { Trash2 } from "lucide-react";
 
-export default function DeleteButton({action,id,name,label}:{action:"delete-course"|"delete-curriculum-template"|"delete-quiz";id:string;name:"courseId"|"templateId"|"quizId";label:string}){
+export default function DeleteButton({action,id,name,label}:{action:"delete-course"|"delete-curriculum-template"|"delete-quiz"|"delete-chapter"|"delete-lesson"|"delete-activity";id:string;name:"courseId"|"templateId"|"quizId"|"chapterId"|"lessonId"|"activityId";label:string}){
   return <form action="/api/lms" method="post" className="delete-form" onSubmit={event=>{if(!window.confirm(`Delete ${label}? This cannot be undone.`))event.preventDefault();}}>
     <input type="hidden" name="action" value={action}/><input type="hidden" name={name} value={id}/>
     <button type="submit" className="danger-button"><Trash2 size={16}/><span>Delete</span></button>
   </form>;
 }
+

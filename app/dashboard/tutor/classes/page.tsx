@@ -3,6 +3,7 @@ import { supportedTimeZones } from "@/db/timezones";
 import { LmsShell, Notice, Status, formatDate } from "../../components";
 import { requireRole } from "../../auth";
 import { DeleteClassButton } from "./DeleteClassButton";
+import { TimePicker12 } from "@/app/components/DateTimePicker12";
 
 type Row={id:string;title:string;starts_at:string;duration_minutes:number;meeting_url:string;course:string;student:string|null;student_id:string|null;status:string;student_rating:number|null;student_feedback:string};
 type Slot={id:string;weekday:number;start_minutes:number;end_minutes:number;timezone:string};
@@ -28,8 +29,8 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
           <input type="hidden" name="action" value="replace-weekly-availability"/>
           <div className="weekly-day-grid">{days.map((day,weekday)=>{const slot=slots.find(item=>item.weekday===weekday);return <div className="weekly-day-row" key={day}>
             <label className="open-day-control"><input type="checkbox" name={`open_${weekday}`} value="1" defaultChecked={Boolean(slot)}/><span><strong>{day}</strong><small>{slot?"Open":"Closed"}</small></span></label>
-            <label><span>From</span><input name={`start_${weekday}`} type="time" defaultValue={slot?clock(slot.start_minutes):"09:00"}/></label>
-            <label><span>Until</span><input name={`end_${weekday}`} type="time" defaultValue={slot?clock(slot.end_minutes):"17:00"}/></label>
+            <TimePicker12 name={`start_${weekday}`} label="From" defaultValue={slot?clock(slot.start_minutes):"09:00"}/>
+            <TimePicker12 name={`end_${weekday}`} label="Until" defaultValue={slot?clock(slot.end_minutes):"17:00"}/>
           </div>})}</div>
           <label className="weekly-timezone">Availability timezone<select name="timeZone" defaultValue={slots[0]?.timezone??timezone} required>{supportedTimeZones().map(zone=><option value={zone} key={zone}>{zone.replaceAll("_"," ")}</option>)}</select><small>All seven days are interpreted in this timezone.</small></label>
           <button>Save weekly hours</button>
@@ -38,7 +39,7 @@ export default async function Page({searchParams}:{searchParams:Promise<Record<s
       <aside className="panel availability-windows-panel">
         <div className="panel-head"><div><span className="panel-kicker">OPEN WINDOWS</span><h2>Day-wise slots</h2></div></div>
         <div className="availability-slot-list">{slots.map(slot=><article key={slot.id}><div><strong>{days[slot.weekday]}</strong><span>{clock(slot.start_minutes)}–{clock(slot.end_minutes)} · {slot.timezone.replaceAll("_"," ")}</span></div><form action="/api/lms" method="post"><input type="hidden" name="action" value="delete-availability-slot"/><input type="hidden" name="slotId" value={slot.id}/><button>Close</button></form></article>)}{!slots.length?<p className="availability-empty">No days are open yet.</p>:null}</div>
-        <details className="extra-slot-editor"><summary>+ Add another window</summary><form action="/api/lms" method="post"><input type="hidden" name="action" value="save-availability-slot"/><label>Day<select name="weekday">{days.map((day,index)=><option value={index} key={day}>{day}</option>)}</select></label><div className="form-row"><label>From<input name="startTime" type="time" required/></label><label>Until<input name="endTime" type="time" required/></label></div><label>Timezone<select name="timeZone" defaultValue={timezone}>{supportedTimeZones().map(zone=><option value={zone} key={zone}>{zone.replaceAll("_"," ")}</option>)}</select></label><button>Open extra slot</button></form></details>
+        <details className="extra-slot-editor"><summary>+ Add another window</summary><form action="/api/lms" method="post"><input type="hidden" name="action" value="save-availability-slot"/><label>Day<select name="weekday">{days.map((day,index)=><option value={index} key={day}>{day}</option>)}</select></label><div className="form-row"><TimePicker12 name="startTime" label="From" required/><TimePicker12 name="endTime" label="Until" defaultValue="17:00" required/></div><label>Timezone<select name="timeZone" defaultValue={timezone}>{supportedTimeZones().map(zone=><option value={zone} key={zone}>{zone.replaceAll("_"," ")}</option>)}</select></label><button>Open extra slot</button></form></details>
       </aside>
     </div>
     <section className="panel"><div className="panel-head"><div><span className="panel-kicker">CLASS SCHEDULE</span><h2>Scheduled and completed lessons</h2></div></div><div className="class-list">{rows.map(r=><article className="class-row" key={r.id}><div className="class-time"><strong>{new Intl.DateTimeFormat('en-IN',{timeZone:timezone,hour:'numeric',minute:'2-digit'}).format(new Date(r.starts_at))}</strong><span>{new Intl.DateTimeFormat('en-IN',{timeZone:timezone,day:'numeric',month:'short'}).format(new Date(r.starts_at))}</span></div><div className="class-accent"/><div className="class-detail"><span>{r.course}</span><h3>{r.title}</h3><p>{r.student??'Course learners'} · {formatDate(r.starts_at,timezone)} · {r.duration_minutes} min</p>{r.status==='completed'&&<small>Student confirmed · {r.student_rating??0}/5 stars{r.student_feedback?` · ${r.student_feedback}`:''}</small>}</div><div className="class-actions">

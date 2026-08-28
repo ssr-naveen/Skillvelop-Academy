@@ -3,6 +3,7 @@ import { supportedTimeZones, validTimeZone } from "@/db/timezones";
 import { notFound } from "next/navigation";
 import { LmsShell, Notice } from "../../../../components";
 import { requireRole } from "../../../../auth";
+import { DateTimePicker12 } from "@/app/components/DateTimePicker12";
 
 type ScheduledClass={id:string;course_id:string;student_id:string|null;title:string;starts_at:string;duration_minutes:number;meeting_url:string;course:string;student:string|null};
 
@@ -31,7 +32,7 @@ export default async function Page({params,searchParams}:{params:Promise<{classI
       <input type="hidden" name="studentId" value={scheduledClass.student_id??""}/>
       <div className="class-edit-context"><span>COURSE</span><strong>{scheduledClass.course}</strong><small>{scheduledClass.student?`Learner · ${scheduledClass.student}`:"Demo learner or course group"}</small></div>
       <label>Class title<input name="title" required maxLength={180} defaultValue={scheduledClass.title}/></label>
-      <div className="form-row"><label>Starts at<input name="startsAt" type="datetime-local" required defaultValue={localDateTimeInput(scheduledClass.starts_at,timezone)}/></label><label>Minutes<input name="duration" type="number" min="15" max="180" required defaultValue={scheduledClass.duration_minutes}/></label></div>
+      <div className="form-row schedule-row"><DateTimePicker12 name="startsAt" label="Starts at" required defaultValue={localDateTimeInput(scheduledClass.starts_at,timezone)}/><label>Minutes<input name="duration" type="number" min="15" max="180" required defaultValue={scheduledClass.duration_minutes}/></label></div>
       <label>Schedule timezone<select name="timeZone" defaultValue={timezone} required>{supportedTimeZones().map(zone=><option value={zone} key={zone}>{zone.replaceAll("_"," ")}</option>)}</select><small>The learner calendar is updated to the same moment in their timezone.</small></label>
       <label>Meeting link <span className="required-label">Required</span><input name="meetingUrl" type="url" inputMode="url" required placeholder="https://meet.google.com/..." defaultValue={scheduledClass.meeting_url}/><small>Use a secure HTTPS link from Google Meet, Zoom, Microsoft Teams or your approved classroom provider.</small></label>
       <button>Save class changes →</button>
