@@ -15,20 +15,20 @@ export const dynamic="force-dynamic";
 
 export default async function Page({searchParams}:{searchParams:Promise<Record<string,string|undefined>>}){
   const profile=await requireRole("tutor","/dashboard/tutor/quizzes"),tutorId=profile.role==="admin"?"usr_demo_tutor":profile.id;
-  const [students,quizzes,assignments,attempts,reviewQuestions,resetRequests]=await Promise.all([
-    all<Student>("SELECT id,name FROM users WHERE role='student' AND status='active' ORDER BY name"),
-    all<Quiz>(`SELECT q.id,q.title,q.description,q.question_count,q.is_unlocked,
+  // Keep reads sequential on the single serverless connection so the timeout
+  // measures database work, not time spent waiting behind sibling queries.
+  const students=await all<Student>("SELECT id,name FROM users WHERE role='student' AND status='active' ORDER BY name");
+  const quizzes=await all<Quiz>(`SELECT q.id,q.title,q.description,q.question_count,q.is_unlocked,
       (SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id=q.id) questions,
       (SELECT COUNT(*) FROM quiz_attempts qa WHERE qa.quiz_id=q.id) attempts,
       (SELECT COUNT(*) FROM quiz_assignments qas WHERE qas.quiz_id=q.id AND qas.status='active') assignments
       FROM quizzes q
       WHERE q.tutor_id=? AND q.scope='standalone' AND q.status='published'
-      ORDER BY q.created_at DESC`,tutorId),
-    all<Assignment>(`SELECT a.id,a.quiz_id,a.student_id,u.name student,a.assigned_at FROM quiz_assignments a JOIN quizzes q ON q.id=a.quiz_id LEFT JOIN users u ON u.id=a.student_id WHERE q.tutor_id=? AND q.scope='standalone' AND a.status='active' ORDER BY a.assigned_at DESC`,tutorId),
-    all<Attempt>(`SELECT qa.id,qa.quiz_id,q.title quiz,q.scope,q.kind,qa.student_id,u.name student,qa.answers_json,qa.score,qa.max_score,qa.submitted_at FROM quiz_attempts qa JOIN quizzes q ON q.id=qa.quiz_id JOIN users u ON u.id=qa.student_id WHERE q.tutor_id=? ORDER BY qa.submitted_at DESC LIMIT 100`,tutorId),
-    all<ReviewQuestion>(`SELECT qq.id,qq.quiz_id,qq.prompt,qq.answer_json,qq.position FROM quiz_questions qq JOIN quizzes q ON q.id=qq.quiz_id WHERE q.tutor_id=? ORDER BY qq.quiz_id,qq.position`,tutorId),
-    all<ResetRequest>(`SELECT r.id,r.quiz_id,q.title quiz,r.learner_id,u.name student,r.reason,r.requested_at FROM assessment_reset_requests r JOIN quizzes q ON q.id=r.quiz_id JOIN users u ON u.id=r.learner_id WHERE q.tutor_id=? AND r.status='pending' ORDER BY r.requested_at`,tutorId),
-  ]);
+      ORDER BY q.created_at DESC`,tutorId);
+  const assignments=await all<Assignment>(`SELECT a.id,a.quiz_id,a.student_id,u.name student,a.assigned_at FROM quiz_assignments a JOIN quizzes q ON q.id=a.quiz_id LEFT JOIN users u ON u.id=a.student_id WHERE q.tutor_id=? AND q.scope='standalone' AND a.status='active' ORDER BY a.assigned_at DESC`,tutorId);
+  const attempts=await all<Attempt>(`SELECT qa.id,qa.quiz_id,q.title quiz,q.scope,q.kind,qa.student_id,u.name student,qa.answers_json,qa.score,qa.max_score,qa.submitted_at FROM quiz_attempts qa JOIN quizzes q ON q.id=qa.quiz_id JOIN users u ON u.id=qa.student_id WHERE q.tutor_id=? ORDER BY qa.submitted_at DESC LIMIT 100`,tutorId);
+  const reviewQuestions=await all<ReviewQuestion>(`SELECT qq.id,qq.quiz_id,qq.prompt,qq.answer_json,qq.position FROM quiz_questions qq JOIN quizzes q ON q.id=qq.quiz_id WHERE q.tutor_id=? ORDER BY qq.quiz_id,qq.position`,tutorId);
+  const resetRequests=await all<ResetRequest>(`SELECT r.id,r.quiz_id,q.title quiz,r.learner_id,u.name student,r.reason,r.requested_at FROM assessment_reset_requests r JOIN quizzes q ON q.id=r.quiz_id JOIN users u ON u.id=r.learner_id WHERE q.tutor_id=? AND r.status='pending' ORDER BY r.requested_at`,tutorId);
   return <LmsShell profile={profile} activeRole="tutor" activePath="/dashboard/tutor/quizzes" eyebrow="Independent learner checks" title="Standalone quizzes" subtitle="Create named quizzes outside courses, choose an exact question count, and assign each quiz to one learner or everyone.">
     <Notice params={await searchParams}/>
     <div className="quiz-maker-intro"><div><span>STANDALONE QUIZ WORKFLOW</span><h2>Build, complete, then assign</h2><p>Course quizzes stay inside the course builder. Only independent quizzes appear here.</p></div><ol><li><b>1</b>Name the quiz</li><li><b>2</b>Add the exact question count</li><li><b>3</b>Assign to a student or everyone</li></ol></div>

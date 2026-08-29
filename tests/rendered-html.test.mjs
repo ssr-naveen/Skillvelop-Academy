@@ -112,7 +112,9 @@ test("bounds database work and keeps tutor aggregate queries non-multiplicative"
   }
   assert.match(courses, /SELECT COUNT\(\*\) FROM enrollments e WHERE e\.course_id=c\.id/);
   assert.match(courses, /SELECT COUNT\(\*\) FROM chapters ch WHERE ch\.course_id=c\.id/);
+  assert.doesNotMatch(courses, /Promise\.all\(/);
   assert.match(quizzes, /SELECT COUNT\(\*\) FROM quiz_attempts qa WHERE qa\.quiz_id=q\.id/);
+  assert.doesNotMatch(quizzes, /Promise\.all\(/);
   assert.match(work, /SELECT COUNT\(\*\) FROM submissions s WHERE s\.activity_id=a\.id/);
   for (const index of [
     "idx_enrollments_course_student",
