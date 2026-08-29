@@ -97,8 +97,18 @@ test("bounds database work and keeps tutor aggregate queries non-multiplicative"
     source("supabase/migrations/202608280003_tutor_query_performance.sql"),
   ]);
 
-  for (const safeguard of ["queryTimeoutMs", "statement_timeout", "max_lifetime", "idle_timeout", "retrying timed-out read"]) {
-    assert.match(database, new RegExp(safeguard));
+  for (const safeguard of [
+    "queryTimeoutMs",
+    "transactionTimeoutMs",
+    "statement_timeout",
+    "max_lifetime",
+    "idle_timeout",
+    "max: 1",
+    "retireSqlClient",
+    "retrying read on a fresh pool",
+    "new PreparedStatement(\"SELECT data,content_type FROM public.file_objects",
+  ]) {
+    assert.ok(database.includes(safeguard), `missing database safeguard: ${safeguard}`);
   }
   assert.match(courses, /SELECT COUNT\(\*\) FROM enrollments e WHERE e\.course_id=c\.id/);
   assert.match(courses, /SELECT COUNT\(\*\) FROM chapters ch WHERE ch\.course_id=c\.id/);

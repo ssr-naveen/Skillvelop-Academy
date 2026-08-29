@@ -101,12 +101,40 @@ function isRetiredDemoSeed(source: string, bindings: unknown[]): boolean {
 
 let client: Sql | null = null;
 const queryTimeoutMs = 12_000;
+const transactionTimeoutMs = 20_000;
 
 class DatabaseQueryTimeoutError extends Error {
   constructor(readonly label: string) {
     super(`Database query timed out: ${label}`);
     this.name = "DatabaseQueryTimeoutError";
   }
+}
+
+function databaseErrorCode(error: unknown): string {
+  if (!error || typeof error !== "object" || !("code" in error)) return "UNKNOWN";
+  return String((error as { code?: unknown }).code || "UNKNOWN").toUpperCase();
+}
+
+function isRecoverableDatabaseError(error: unknown): boolean {
+  if (error instanceof DatabaseQueryTimeoutError) return true;
+  const code = databaseErrorCode(error);
+  return code.startsWith("08") || [
+    "CONNECTION_CLOSED", "CONNECT_TIMEOUT", "CONNECTION_DESTROYED",
+    "ECONNREFUSED", "ECONNRESET", "EPIPE", "ETIMEDOUT", "ENETUNREACH",
+    "EHOSTUNREACH", "ENOTFOUND", "EAI_AGAIN", "57P01", "57P02", "57P03",
+  ].includes(code);
+}
+
+function retireSqlClient(stale: Sql, reason: string) {
+  if (client !== stale) return;
+  client = null;
+  console.warn("[database] recycling connection pool", { reason });
+  // Do not make the request wait for an unhealthy socket to close. The next
+  // query receives a fresh pool immediately; postgres.js gets one second to
+  // cleanly terminate the retired pool in the background.
+  void stale.end({ timeout: 1 }).catch((error: unknown) => {
+    console.warn("[database] retired pool close failed", { code: databaseErrorCode(error) });
+  });
 }
 
 function queryLabel(source: string): string {
@@ -149,10 +177,12 @@ function sqlClient(): Sql {
     ssl: process.env.DB_SSLMODE === "disable" ? false : "require",
     // Vercel functions can be frozen and resumed. Recycle connections quickly
     // so a stale pooled socket cannot leave dashboard navigation hanging.
-    max: 2,
+    // Supabase recommends starting with one application connection for
+    // serverless workloads. Supavisor handles the backend pooling on port 6543.
+    max: 1,
     prepare: false,
-    idle_timeout: 5,
-    max_lifetime: 60,
+    idle_timeout: 2,
+    max_lifetime: 30,
     connect_timeout: 5,
     keep_alive: 30,
     connection: {
@@ -175,8 +205,16 @@ class PreparedStatement implements D1PreparedStatement {
     try {
       return await executeWithDeadline(executor, translated, this.bindings);
     } catch (error) {
-      if (!(error instanceof DatabaseQueryTimeoutError) || !/^\s*SELECT\b/i.test(this.source)) throw error;
-      console.warn("[database] retrying timed-out read", { label: error.label });
+      const label = queryLabel(translated);
+      const recoverable = isRecoverableDatabaseError(error);
+      console.error("[database] query failed", {
+        label,
+        code: databaseErrorCode(error),
+        recoverable,
+      });
+      if (recoverable) retireSqlClient(executor, `${label}:${databaseErrorCode(error)}`);
+      if (!recoverable || !/^\s*SELECT\b/i.test(this.source)) throw error;
+      console.warn("[database] retrying read on a fresh pool", { label });
       return executeWithDeadline(sqlClient(), translated, this.bindings);
     }
   }
@@ -197,7 +235,8 @@ class PreparedStatement implements D1PreparedStatement {
 class PostgresDatabase {
   prepare(source: string) { return new PreparedStatement(source); }
   async batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]> {
-    return sqlClient().begin(async (tx) => {
+    const executor = sqlClient();
+    const pending = executor.begin(async (tx) => {
       const results = [];
       for (const statement of statements) {
         const rows = await (statement as PreparedStatement).execute(tx as Sql);
@@ -205,26 +244,37 @@ class PostgresDatabase {
       }
       return results;
     });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new DatabaseQueryTimeoutError("TRANSACTION batch")), transactionTimeoutMs);
+    });
+    try {
+      return await Promise.race([pending, deadline]);
+    } catch (error) {
+      if (isRecoverableDatabaseError(error)) retireSqlClient(executor, `TRANSACTION:${databaseErrorCode(error)}`);
+      throw error;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 }
 
 class DatabaseFileStore {
   async put(key: string, value: ArrayBuffer, metadata: FileMetadata = {}) {
-    await sqlClient()`INSERT INTO public.file_objects (key,data,content_type,created_at)
-      VALUES (${key},${Buffer.from(value)},${metadata.httpMetadata?.contentType || "application/octet-stream"},${new Date().toISOString()})
-      ON CONFLICT(key) DO UPDATE SET data=excluded.data,content_type=excluded.content_type,created_at=excluded.created_at`;
+    await new PreparedStatement(`INSERT INTO public.file_objects (key,data,content_type,created_at)
+      VALUES (?,?,?,?) ON CONFLICT(key) DO UPDATE SET data=excluded.data,content_type=excluded.content_type,created_at=excluded.created_at`)
+      .bind(key, Buffer.from(value), metadata.httpMetadata?.contentType || "application/octet-stream", new Date().toISOString()).run();
   }
   async get(key: string) {
-    const rows = await sqlClient()`SELECT data,content_type FROM public.file_objects WHERE key=${key} LIMIT 1`;
-    if (!rows[0]) return null;
-    const data = rows[0].data as Uint8Array;
-    return { body: new Uint8Array(data), httpMetadata: { contentType: String(rows[0].content_type) } };
+    const row = await new PreparedStatement("SELECT data,content_type FROM public.file_objects WHERE key=? LIMIT 1").bind(key).first<{ data: Uint8Array; content_type: string }>();
+    if (!row) return null;
+    return { body: new Uint8Array(row.data), httpMetadata: { contentType: String(row.content_type) } };
   }
-  async delete(key: string) { await sqlClient()`DELETE FROM public.file_objects WHERE key=${key}`; }
+  async delete(key: string) { await new PreparedStatement("DELETE FROM public.file_objects WHERE key=?").bind(key).run(); }
   async list(options: { prefix?: string } = {}) {
     const prefix = `${options.prefix || ""}%`;
-    const rows = await sqlClient()`SELECT key FROM public.file_objects WHERE key LIKE ${prefix}`;
-    return { objects: rows.map((row) => ({ key: String(row.key) })) };
+    const rows = await new PreparedStatement("SELECT key FROM public.file_objects WHERE key LIKE ?").bind(prefix).all<{ key: string }>();
+    return { objects: rows.results.map((row) => ({ key: String(row.key) })) };
   }
 }
 
